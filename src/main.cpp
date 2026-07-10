@@ -36,6 +36,7 @@
 #include "UiFontSelection.h"
 #include "activities/Activity.h"
 #include "activities/ActivityManager.h"
+#include "activities/reader/ReaderUtils.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
 #include "util/BootRecovery.h"
@@ -226,7 +227,8 @@ void silentRestartToReader() {
 // Verify power button press duration on wake-up from deep sleep
 // Pre-condition: isWakeupByPowerButton() == true
 void verifyPowerButtonDuration() {
-  if (SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::SLEEP) {
+  if (SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::SLEEP ||
+      SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::SLEEP_DBL_REFRESH) {
     // Fast path for short press
     // Needed because inputManager.isPressed() may take up to ~500ms to return the correct state
     return;
@@ -421,6 +423,8 @@ void setup() {
 
   BootRecovery::enterStage(BootRecovery::BootStage::UiTheme);
   UITheme::getInstance().reload();
+  // Non-reader UI boots in the configured orientation when the toggle is on.
+  ReaderUtils::applyUiOrientation(renderer);
   ButtonNavigator::setMappedInputManager(mappedInputManager);
 
   const auto wakeupReason = gpio.getWakeupReason();
@@ -428,7 +432,8 @@ void setup() {
     case HalGPIO::WakeupReason::PowerButton:
       LOG_DBG("MAIN", "Verifying power button press duration");
       gpio.verifyPowerButtonWakeup(SETTINGS.getPowerButtonDuration(),
-                                   SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::SLEEP);
+                                   SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::SLEEP ||
+                                       SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::SLEEP_DBL_REFRESH);
       break;
     case HalGPIO::WakeupReason::AfterUSBPower:
       // If USB power caused a cold boot, go back to sleep
@@ -646,6 +651,34 @@ void loop() {
     LOG_DBG("MAIN", "Manual screen refresh triggered");
     RenderLock lock;
     renderer.displayBuffer(HalDisplay::HALF_REFRESH);
+  }
+
+  // SLEEP_DBL_REFRESH: single click sleeps once the double-click window
+  // expires; a second click within the window forces a full refresh instead.
+  // Holds > getPowerButtonDuration() are handled by the sleep check above.
+  if (SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::SLEEP_DBL_REFRESH) {
+    constexpr unsigned long POWER_DOUBLE_CLICK_MS = 350;
+    static bool waitingForSecondPowerClick = false;
+    static unsigned long firstPowerClickMs = 0;
+    const unsigned long nowMs = millis();
+    // Ignore releases while Down is held so the screenshot combo doesn't
+    // register as a click on its way out.
+    if (mappedInputManager.wasReleased(MappedInputManager::Button::Power) && !gpio.isPressed(HalGPIO::BTN_DOWN)) {
+      if (waitingForSecondPowerClick && nowMs - firstPowerClickMs <= POWER_DOUBLE_CLICK_MS) {
+        waitingForSecondPowerClick = false;
+        LOG_DBG("MAIN", "Power double-click: full screen refresh");
+        RenderLock lock;
+        renderer.displayBuffer(HalDisplay::FULL_REFRESH);
+      } else {
+        waitingForSecondPowerClick = true;
+        firstPowerClickMs = nowMs;
+      }
+    } else if (waitingForSecondPowerClick && nowMs - firstPowerClickMs > POWER_DOUBLE_CLICK_MS) {
+      waitingForSecondPowerClick = false;
+      LOG_DBG("MAIN", "Power single click: entering sleep");
+      enterDeepSleep();
+      return;
+    }
   }
 
   // Refresh the battery icon when USB is plugged or unplugged.

@@ -39,6 +39,8 @@ const std::vector<SettingInfo>& getSettingsList() {
 #endif
         SettingInfo::Enum(StrId::STR_HOME_BOOK_SOURCE, &CrossPointSettings::homeBookSource,
                           {StrId::STR_RECENTS, StrId::STR_FAVORITES}, "homeBookSource", StrId::STR_CAT_DISPLAY),
+        SettingInfo::Toggle(StrId::STR_UI_FOLLOW_ORIENTATION, &CrossPointSettings::uiFollowOrientation,
+                            "uiFollowOrientation", StrId::STR_CAT_DISPLAY),
         SettingInfo::Toggle(StrId::STR_ANTI_GHOSTING_EXPERIMENTAL, &CrossPointSettings::antiGhostingExperimental,
                             "antiGhostingExperimental", StrId::STR_CAT_DISPLAY),
         SettingInfo::Toggle(StrId::STR_DARK_MODE, &CrossPointSettings::darkMode, "darkMode", StrId::STR_CAT_DISPLAY),
@@ -97,7 +99,7 @@ const std::vector<SettingInfo>& getSettingsList() {
                           "longPressButtonBehavior", StrId::STR_CAT_CONTROLS),
         SettingInfo::Enum(StrId::STR_SHORT_PWR_BTN, &CrossPointSettings::shortPwrBtn,
                           {StrId::STR_IGNORE, StrId::STR_SLEEP, StrId::STR_PAGE_TURN, StrId::STR_FORCE_REFRESH,
-                           StrId::STR_TOGGLE_STATUS_BAR},
+                           StrId::STR_TOGGLE_STATUS_BAR, StrId::STR_SLEEP_DBL_REFRESH},
                           "shortPwrBtn", StrId::STR_CAT_CONTROLS),
         SettingInfo::Enum(StrId::STR_TILT_PAGE_TURN, &CrossPointSettings::tiltPageTurn,
                           {StrId::STR_STATE_OFF, StrId::STR_NORMAL, StrId::STR_INVERTED}, "tiltPageTurn",

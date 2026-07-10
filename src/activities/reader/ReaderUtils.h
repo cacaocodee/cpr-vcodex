@@ -44,6 +44,14 @@ inline void applyOrientation(GfxRenderer& renderer, const uint8_t orientation) {
   }
 }
 
+// Orientation for non-reader UI (Home, Apps, Settings): follows the reader
+// orientation when the toggle is on, otherwise the classic portrait layout.
+inline void applyUiOrientation(GfxRenderer& renderer) {
+  applyOrientation(renderer, SETTINGS.uiFollowOrientation
+                                 ? SETTINGS.orientation
+                                 : static_cast<uint8_t>(CrossPointSettings::ORIENTATION::PORTRAIT));
+}
+
 struct PageTurnResult {
   bool prev;
   bool next;

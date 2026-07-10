@@ -319,8 +319,8 @@ void TxtReaderActivity::onExit() {
 
   ReaderUtils::requestReaderUiTransitionRefresh(renderer);
 
-  // Reset orientation back to portrait for the rest of the UI
-  renderer.setOrientation(GfxRenderer::Orientation::Portrait);
+  // Reset orientation for the rest of the UI (portrait unless it follows the reader)
+  ReaderUtils::applyUiOrientation(renderer);
 
   pageOffsets.clear();
   currentPageLines.clear();

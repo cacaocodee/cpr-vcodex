@@ -166,6 +166,9 @@ class CrossPointSettings {
     PAGE_TURN = 2,
     FORCE_REFRESH = 3,
     TOGGLE_STATUS_BAR = 4,
+    // Single click sleeps (deferred by the double-click window); double click
+    // forces a full e-ink refresh. Single-click wake behaves like SLEEP.
+    SLEEP_DBL_REFRESH = 5,
     SHORT_PWRBTN_COUNT
   };
   enum TILT_PAGE_TURN { TILT_OFF = 0, TILT_NORMAL = 1, TILT_INVERTED = 2, TILT_PAGE_TURN_COUNT };
@@ -266,6 +269,9 @@ class CrossPointSettings {
   // EPUB reading orientation settings
   // 0 = portrait (default), 1 = landscape clockwise, 2 = inverted, 3 = landscape counter-clockwise
   uint8_t orientation = PORTRAIT;
+  // When set, non-reader UI (Home, Apps, Settings) renders in `orientation`
+  // instead of always portrait.
+  uint8_t uiFollowOrientation = 1;
   // Button layouts (front layout retained for migration only)
   uint8_t frontButtonLayout = BACK_CONFIRM_LEFT_RIGHT;
   uint8_t sideButtonLayout = PREV_NEXT;

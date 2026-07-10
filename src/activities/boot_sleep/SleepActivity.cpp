@@ -656,7 +656,7 @@ void SleepActivity::onEnter() {
     if (!usesCustomSleepImages()) {
       GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
     }
-    renderer.setOrientation(GfxRenderer::Orientation::Portrait);
+    ReaderUtils::applyUiOrientation(renderer);
   } else {
     if (!usesCustomSleepImages()) {
       GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));

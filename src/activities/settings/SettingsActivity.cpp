@@ -49,6 +49,7 @@
 #include "activities/apps/SleepAppActivity.h"
 #include "activities/apps/SyncDayActivity.h"
 #include "activities/network/WifiSelectionActivity.h"
+#include "activities/reader/ReaderUtils.h"
 #include "activities/util/ConfirmationActivity.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
@@ -81,10 +82,13 @@ const std::vector<SettingInfo>& getDeviceDisplaySettings() {
       SettingInfo::Enum(
           StrId::STR_REFRESH_FREQ, &CrossPointSettings::refreshFrequency,
           {StrId::STR_PAGES_1, StrId::STR_PAGES_5, StrId::STR_PAGES_10, StrId::STR_PAGES_15, StrId::STR_PAGES_30}),
+#if CPR_ENABLE_EXTRA_THEMES
       SettingInfo::Enum(StrId::STR_UI_THEME, &CrossPointSettings::uiTheme,
                         {StrId::STR_THEME_LYRA, StrId::STR_THEME_LYRA_CUSTOM, StrId::STR_THEME_LYRA_CAROUSEL}),
+#endif
       SettingInfo::Enum(StrId::STR_HOME_BOOK_SOURCE, &CrossPointSettings::homeBookSource,
                         {StrId::STR_RECENTS, StrId::STR_FAVORITES}),
+      SettingInfo::Toggle(StrId::STR_UI_FOLLOW_ORIENTATION, &CrossPointSettings::uiFollowOrientation),
       SettingInfo::Toggle(StrId::STR_ANTI_GHOSTING_EXPERIMENTAL, &CrossPointSettings::antiGhostingExperimental),
       SettingInfo::Toggle(StrId::STR_DARK_MODE, &CrossPointSettings::darkMode),
       SettingInfo::Toggle(StrId::STR_SUNLIGHT_FADING_FIX, &CrossPointSettings::fadingFix),
@@ -139,7 +143,7 @@ const std::vector<SettingInfo>& getDeviceControlsSettings() {
                            StrId::STR_LONG_PRESS_BEHAVIOR_ORIENTATION}),
         SettingInfo::Enum(StrId::STR_SHORT_PWR_BTN, &CrossPointSettings::shortPwrBtn,
                           {StrId::STR_IGNORE, StrId::STR_SLEEP, StrId::STR_PAGE_TURN, StrId::STR_FORCE_REFRESH,
-                           StrId::STR_TOGGLE_STATUS_BAR}),
+                           StrId::STR_TOGGLE_STATUS_BAR, StrId::STR_SLEEP_DBL_REFRESH}),
     };
     if (halTiltSensor.isAvailable()) {
       result.push_back(SettingInfo::Enum(StrId::STR_TILT_PAGE_TURN, &CrossPointSettings::tiltPageTurn,
@@ -829,6 +833,14 @@ void SettingsActivity::toggleCurrentSetting() {
 
   if (setting.valuePtr == &CrossPointSettings::darkMode) {
     renderer.setDarkMode(SETTINGS.darkMode);
+    renderer.requestNextFullRefresh();
+    requestUpdate(true);
+  }
+
+  if (setting.valuePtr == &CrossPointSettings::orientation ||
+      setting.valuePtr == &CrossPointSettings::uiFollowOrientation) {
+    // Re-render the UI in the new orientation immediately.
+    ReaderUtils::applyUiOrientation(renderer);
     renderer.requestNextFullRefresh();
     requestUpdate(true);
   }
