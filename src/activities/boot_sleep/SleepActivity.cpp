@@ -514,8 +514,7 @@ void drawFullScreenCoverBitmap(const GfxRenderer& renderer, const Bitmap& bitmap
   renderer.drawBitmap(bitmap, placement.x, placement.y, pageWidth, pageHeight, placement.cropX, placement.cropY);
 }
 
-bool selectConfiguredCustomSleepImage(CustomSleepImage& selected) {
-  const std::string sleepDir = SleepImageUtils::resolveConfiguredSleepDirectory();
+bool selectCustomSleepImageFromDir(const std::string& sleepDir, CustomSleepImage& selected) {
   auto dir = sleepDir.empty() ? FsFile{} : Storage.open(sleepDir.c_str());
 
   if (!dir || !dir.isDirectory()) {
@@ -589,6 +588,27 @@ bool selectConfiguredCustomSleepImage(CustomSleepImage& selected) {
   selected.path = sleepDir + "/" + files[static_cast<size_t>(fileIndex)];
   selected.isPng = FsHelpers::hasPngExtension(files[static_cast<size_t>(fileIndex)]);
   return !selected.path.empty();
+}
+
+bool rendererIsLandscape(const GfxRenderer& renderer) {
+  const auto orientation = renderer.getOrientation();
+  return orientation == GfxRenderer::Orientation::LandscapeClockwise ||
+         orientation == GfxRenderer::Orientation::LandscapeCounterClockwise;
+}
+
+bool selectConfiguredCustomSleepImage(const GfxRenderer& renderer, CustomSleepImage& selected) {
+  // Landscape wallpapers live in sleep2/ (or the hidden .sleep2/ variant);
+  // fall back to the regular sleep folder when sleep2 is missing or has no
+  // usable images.
+  if (rendererIsLandscape(renderer)) {
+    if (selectCustomSleepImageFromDir("/.sleep2", selected)) {
+      return true;
+    }
+    if (selectCustomSleepImageFromDir("/sleep2", selected)) {
+      return true;
+    }
+  }
+  return selectCustomSleepImageFromDir(SleepImageUtils::resolveConfiguredSleepDirectory(), selected);
 }
 
 bool drawPngSleepBackground(const GfxRenderer& renderer, const std::string& sourcePath) {
@@ -707,7 +727,7 @@ void SleepActivity::onEnter() {
 
 void SleepActivity::renderCustomSleepScreen() const {
   CustomSleepImage selected;
-  if (selectConfiguredCustomSleepImage(selected)) {
+  if (selectConfiguredCustomSleepImage(renderer, selected)) {
     if (selected.isPng) {
       if (renderPngSleepScreen(selected.path)) {
         return;
@@ -1049,7 +1069,7 @@ void SleepActivity::renderCustomStatsSleepScreen(bool footerOnly) const {
   const ReadingBookStats* book = footerOnly ? nullptr : getCurrentSleepBook();
 
   CustomSleepImage selected;
-  if (selectConfiguredCustomSleepImage(selected)) {
+  if (selectConfiguredCustomSleepImage(renderer, selected)) {
     if (selected.isPng) {
       renderer.clearScreen();
       if (drawPngSleepBackground(renderer, selected.path)) {
