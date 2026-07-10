@@ -1,3 +1,7 @@
+#include "FeatureFlags.h"
+
+#if CPR_ENABLE_OPDS
+
 #include "OpdsServerStore.h"
 
 #include <HalStorage.h>
@@ -108,3 +112,5 @@ const OpdsServer* OpdsServerStore::getServer(size_t index) const {
   }
   return &servers[index];
 }
+
+#endif  // CPR_ENABLE_OPDS

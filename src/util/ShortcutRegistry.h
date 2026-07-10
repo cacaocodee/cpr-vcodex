@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "CrossPointSettings.h"
+#include "FeatureFlags.h"
 #include "I18n.h"
 #include "components/themes/BaseTheme.h"
 
@@ -39,8 +40,11 @@ struct ShortcutDefinition {
   uint8_t CrossPointSettings::* visiblePtr;
 };
 
-inline const std::array<ShortcutDefinition, 17>& getShortcutDefinitions() {
-  static const std::array<ShortcutDefinition, 17> definitions = {
+inline constexpr size_t kShortcutDefinitionCount =
+    15 + (CPR_ENABLE_DICTIONARY ? 1 : 0) + (CPR_ENABLE_OPDS ? 1 : 0);
+
+inline const std::array<ShortcutDefinition, kShortcutDefinitionCount>& getShortcutDefinitions() {
+  static const std::array<ShortcutDefinition, kShortcutDefinitionCount> definitions = {
       ShortcutDefinition{ShortcutId::BrowseFiles, StrId::STR_BROWSE_FILES, StrId::STR_NONE_OPT, UIIcon::Folder,
                          &CrossPointSettings::browseFilesShortcut, &CrossPointSettings::browseFilesShortcutOrder,
                          &CrossPointSettings::browseFilesShortcutVisible},
@@ -79,9 +83,11 @@ inline const std::array<ShortcutDefinition, 17>& getShortcutDefinitions() {
       ShortcutDefinition{ShortcutId::Flashcards, StrId::STR_FLASHCARDS, StrId::STR_FLASHCARDS_APP_DESC, UIIcon::Text,
                          &CrossPointSettings::flashcardsShortcut, &CrossPointSettings::flashcardsShortcutOrder,
                          &CrossPointSettings::flashcardsShortcutVisible},
+#if CPR_ENABLE_DICTIONARY
       ShortcutDefinition{ShortcutId::Dictionary, StrId::STR_DICTIONARY, StrId::STR_DICTIONARY_APP_DESC, UIIcon::Text,
                          &CrossPointSettings::dictionaryShortcut, &CrossPointSettings::dictionaryShortcutOrder,
                          &CrossPointSettings::dictionaryShortcutVisible},
+#endif
       ShortcutDefinition{ShortcutId::FileTransfer, StrId::STR_FILE_TRANSFER, StrId::STR_FILE_TRANSFER_APP_DESC,
                          UIIcon::Transfer, &CrossPointSettings::fileTransferShortcut,
                          &CrossPointSettings::fileTransferShortcutOrder, &CrossPointSettings::fileTransferShortcutVisible},
@@ -92,9 +98,11 @@ inline const std::array<ShortcutDefinition, 17>& getShortcutDefinitions() {
       ShortcutDefinition{ShortcutId::Sleep, StrId::STR_SLEEP, StrId::STR_SLEEP_APP_DESC, UIIcon::Folder,
                          &CrossPointSettings::sleepShortcut, &CrossPointSettings::sleepShortcutOrder,
                          &CrossPointSettings::sleepShortcutVisible},
+#if CPR_ENABLE_OPDS
       ShortcutDefinition{ShortcutId::OpdsBrowser, StrId::STR_OPDS_BROWSER, StrId::STR_NONE_OPT, UIIcon::Library,
                          &CrossPointSettings::opdsBrowserShortcut, &CrossPointSettings::opdsBrowserShortcutOrder,
                          &CrossPointSettings::opdsBrowserShortcutVisible},
+#endif
   };
 
   return definitions;

@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "FeatureFlags.h"
 #include "MappedInputManager.h"
 #include "RecentBooksStore.h"
 #include "components/themes/lyra/LyraCarouselTheme.h"
@@ -30,6 +31,7 @@ void UITheme::reload() {
 
 void UITheme::setTheme(CrossPointSettings::UI_THEME type) {
   switch (type) {
+#if CPR_ENABLE_EXTRA_THEMES
     case CrossPointSettings::UI_THEME::LYRA:
       LOG_DBG("UI", "Using Lyra theme");
       currentTheme = std::make_unique<LyraTheme>();
@@ -40,6 +42,10 @@ void UITheme::setTheme(CrossPointSettings::UI_THEME type) {
       currentTheme = std::make_unique<LyraCarouselTheme>();
       currentMetrics = &LyraCarouselMetrics::values;
       break;
+#endif
+    // Without the extra theme variants a stored LYRA/LYRA_CAROUSEL value
+    // falls through to the vCodex default; SETTINGS.uiTheme is left intact
+    // so the choice survives a reflash back to the full firmware.
     case CrossPointSettings::UI_THEME::LYRA_CUSTOM:
     default:
       LOG_DBG("UI", "Using Lyra vCodex theme");

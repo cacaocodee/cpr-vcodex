@@ -8,6 +8,7 @@
 #include <cstring>
 #include <string>
 
+#include "FeatureFlags.h"
 #include "fontIds.h"
 
 // Initialize the static instance
@@ -258,6 +259,14 @@ bool CrossPointSettings::loadFromBinaryFile() {
     applyLegacyFrontButtonLayout(*this);
   }
 
+#if !CPR_ENABLE_EXTRA_FONTS
+  // Lexend/NotoSans are not compiled in; clamp stale selections from the
+  // legacy binary settings file so text never renders with a missing font.
+  if (fontFamily != BOOKERLY) {
+    fontFamily = BOOKERLY;
+  }
+#endif
+
   LOG_DBG("CPS", "Settings loaded from binary file");
   return true;
 }
@@ -422,6 +431,7 @@ int CrossPointSettings::getReaderFontId() const {
         case EXTRA_LARGE:
           return BOOKERLY_18_FONT_ID;
       }
+#if CPR_ENABLE_EXTRA_FONTS
     case NOTOSANS:
       switch (fontSize) {
         case X_SMALL:
@@ -450,5 +460,6 @@ int CrossPointSettings::getReaderFontId() const {
         case EXTRA_LARGE:
           return LEXEND_18_FONT_ID;
       }
+#endif  // CPR_ENABLE_EXTRA_FONTS
   }
 }

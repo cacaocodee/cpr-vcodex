@@ -21,10 +21,13 @@
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "FavoritesStore.h"
+#include "FeatureFlags.h"
 #include "FlashcardsStore.h"
 #include "KOReaderCredentialStore.h"
 #include "MappedInputManager.h"
+#if CPR_ENABLE_OPDS
 #include "OpdsServerStore.h"
+#endif
 #include "ReadingStatsStore.h"
 #include "RecentBooksStore.h"
 #include "version.h"
@@ -80,6 +83,7 @@ EpdFont bookerly18BoldItalicFont(&bookerly_18_bolditalic);
 EpdFontFamily bookerly18FontFamily(&bookerly18RegularFont, &bookerly18BoldFont, &bookerly18ItalicFont,
                                    &bookerly18BoldItalicFont);
 
+#if CPR_ENABLE_EXTRA_FONTS
 // Lexend is bundled with regular and bold only. Italic falls back to regular,
 // and bold italic falls back to bold to keep the family complete for EPUB styling.
 EpdFont lexend10RegularFont(&lexend_10_regular);
@@ -128,6 +132,7 @@ EpdFont notosans18ItalicFont(&notosans_18_italic);
 EpdFont notosans18BoldItalicFont(&notosans_18_bolditalic);
 EpdFontFamily notosans18FontFamily(&notosans18RegularFont, &notosans18BoldFont, &notosans18ItalicFont,
                                    &notosans18BoldItalicFont);
+#endif  // CPR_ENABLE_EXTRA_FONTS
 #endif  // OMIT_FONTS
 
 EpdFont smallFont(&notosans_8_regular);
@@ -144,7 +149,9 @@ EpdFontFamily ui12FontFamily(&ui12RegularFont, &ui12BoldFont);
 namespace {
 
 bool shouldUseNotoUiFonts(const Language lang) {
-#ifdef OMIT_FONTS
+#if defined(OMIT_FONTS) || !CPR_ENABLE_EXTRA_FONTS
+  // Without NotoSans the Vietnamese UI falls back to the Ubuntu fonts
+  // (incomplete VI glyph coverage) — known debloat limitation.
   (void)lang;
   return false;
 #else
@@ -155,7 +162,7 @@ bool shouldUseNotoUiFonts(const Language lang) {
 void applyUiFontsForLanguage(const Language lang) {
   renderer.insertFont(SMALL_FONT_ID, smallFontFamily);
 
-#ifdef OMIT_FONTS
+#if defined(OMIT_FONTS) || !CPR_ENABLE_EXTRA_FONTS
   (void)lang;
   renderer.insertFont(UI_10_FONT_ID, ui10FontFamily);
   renderer.insertFont(UI_12_FONT_ID, ui12FontFamily);
@@ -314,6 +321,7 @@ void setupDisplayAndFonts(bool seamless = false) {
   renderer.insertFont(BOOKERLY_16_FONT_ID, bookerly16FontFamily);
   renderer.insertFont(BOOKERLY_18_FONT_ID, bookerly18FontFamily);
 
+#if CPR_ENABLE_EXTRA_FONTS
   renderer.insertFont(LEXEND_10_FONT_ID, lexend10FontFamily);
   renderer.insertFont(LEXEND_12_FONT_ID, lexend12FontFamily);
   renderer.insertFont(LEXEND_14_FONT_ID, lexend14FontFamily);
@@ -325,6 +333,7 @@ void setupDisplayAndFonts(bool seamless = false) {
   renderer.insertFont(NOTOSANS_14_FONT_ID, notosans14FontFamily);
   renderer.insertFont(NOTOSANS_16_FONT_ID, notosans16FontFamily);
   renderer.insertFont(NOTOSANS_18_FONT_ID, notosans18FontFamily);
+#endif  // CPR_ENABLE_EXTRA_FONTS
 #endif  // OMIT_FONTS
   refreshUiFontsForCurrentLanguage();
   if (Storage.ready()) {
@@ -401,12 +410,14 @@ void setup() {
     KOREADER_STORE.loadFromFile();
   }
 
+#if CPR_ENABLE_OPDS
   if (BootRecovery::shouldSkipOPDS()) {
     logSkip("Skipping OPDS store load due to recovery mode");
   } else {
     BootRecovery::enterStage(BootRecovery::BootStage::OPDS);
     OPDS_STORE.loadFromFile();
   }
+#endif
 
   BootRecovery::enterStage(BootRecovery::BootStage::UiTheme);
   UITheme::getInstance().reload();

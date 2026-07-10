@@ -1,3 +1,7 @@
+#include "FeatureFlags.h"
+
+#if CPR_ENABLE_DICTIONARY
+
 #include "DictionarySuggestionsActivity.h"
 
 #include <FontCacheManager.h>
@@ -104,3 +108,5 @@ void DictionarySuggestionsActivity::render(RenderLock&&) {
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
   renderer.displayBuffer(HalDisplay::FAST_REFRESH);
 }
+
+#endif  // CPR_ENABLE_DICTIONARY

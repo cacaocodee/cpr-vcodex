@@ -7,8 +7,11 @@
 
 #include "AchievementsStore.h"
 #include "FavoritesStore.h"
+#include "FeatureFlags.h"
 #include "FlashcardsStore.h"
+#if CPR_ENABLE_OPDS
 #include "OpdsServerStore.h"
+#endif
 #include "ReadingStatsStore.h"
 #include "RecentBooksStore.h"
 #include "util/SleepImageUtils.h"
@@ -107,8 +110,10 @@ std::string ShortcutUiMetadata::getSubtitle(const ShortcutDefinition& definition
       return getSleepShortcutSubtitle();
     case ShortcutId::FileTransfer:
       return getFileTransferShortcutSubtitle();
+#if CPR_ENABLE_OPDS
     case ShortcutId::OpdsBrowser:
       return std::to_string(OPDS_STORE.getCount());
+#endif
     default:
       return (definition.descriptionId == StrId::STR_NONE_OPT) ? "" : std::string(I18N.get(definition.descriptionId));
   }

@@ -22,13 +22,18 @@
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "FavoritesStore.h"
+#include "FeatureFlags.h"
 #include "MappedInputManager.h"
+#if CPR_ENABLE_OPDS
 #include "OpdsServerStore.h"
+#endif
 #include "ReadingStatsStore.h"
 #include "RecentBooksStore.h"
 #include "activities/apps/AchievementsActivity.h"
 #include "activities/apps/BookmarksAppActivity.h"
+#if CPR_ENABLE_DICTIONARY
 #include "activities/apps/DictionaryActivity.h"
+#endif
 #include "activities/apps/FavoritesAppActivity.h"
 #include "activities/apps/FlashcardsAppActivity.h"
 #include "activities/apps/IfFoundActivity.h"
@@ -254,7 +259,11 @@ bool showHomeShortcutAccessory(const HomeShortcutEntry& entry) {
 }
 
 bool isLyraCarouselTheme() {
+#if CPR_ENABLE_EXTRA_THEMES
   return static_cast<CrossPointSettings::UI_THEME>(SETTINGS.uiTheme) == CrossPointSettings::UI_THEME::LYRA_CAROUSEL;
+#else
+  return false;
+#endif
 }
 
 int wrapBookIndex(int index, int bookCount) {
@@ -594,7 +603,11 @@ void HomeActivity::scheduleCarouselCoverLoadIfNeeded() {
 void HomeActivity::onEnter() {
   Activity::onEnter();
 
+#if CPR_ENABLE_OPDS
   hasOpdsServers = OPDS_STORE.hasServers();
+#else
+  hasOpdsServers = false;
+#endif
 
   selectorIndex = 0;
   firstRenderDone = false;
@@ -758,7 +771,9 @@ bool HomeActivity::renderCarouselFrame(int bookIndex) {
   // selectorIndex so inCarouselRow=false and the frame is stored with a thin
   // outline; drawCarouselBorder() overlays the thick selection border at
   // display time only when the carousel row is actually active.
+#if CPR_ENABLE_EXTRA_THEMES
   LyraCarouselTheme::setPreRenderIndex(safeBookIndex);
+#endif
   GUI.drawRecentBookCover(renderer, Rect{0, metrics.homeTopPadding, pageWidth, metrics.homeCoverTileHeight},
                           recentBooks, bookCount, localCoverRendered, localCoverBufferStored, localBufferRestored,
                           [] { return false; });
@@ -1026,10 +1041,12 @@ void HomeActivity::loop() {
           startActivityForResult(std::make_unique<FlashcardsAppActivity>(renderer, mappedInput),
                                  [this](const ActivityResult&) { requestFreshHomeRender(true); });
           break;
+#if CPR_ENABLE_DICTIONARY
         case ShortcutId::Dictionary:
           startActivityForResult(std::make_unique<DictionaryActivity>(renderer, mappedInput),
                                  [this](const ActivityResult&) { requestFreshHomeRender(true); });
           break;
+#endif
         case ShortcutId::FileTransfer:
           activityManager.goToFileTransfer();
           break;
@@ -1037,9 +1054,11 @@ void HomeActivity::loop() {
           startActivityForResult(std::make_unique<SleepAppActivity>(renderer, mappedInput),
                                  [this](const ActivityResult&) { requestFreshHomeRender(true); });
           break;
+#if CPR_ENABLE_OPDS
         case ShortcutId::OpdsBrowser:
           onOpdsBrowserOpen();
           break;
+#endif
       }
     }
   }

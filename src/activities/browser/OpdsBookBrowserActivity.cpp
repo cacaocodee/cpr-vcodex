@@ -1,3 +1,7 @@
+#include "FeatureFlags.h"
+
+#if CPR_ENABLE_OPDS
+
 #include "OpdsBookBrowserActivity.h"
 
 #include <GfxRenderer.h>
@@ -398,3 +402,5 @@ void OpdsBookBrowserActivity::onWifiSelectionComplete(const bool connected) {
     requestUpdate();
   }
 }
+
+#endif  // CPR_ENABLE_OPDS

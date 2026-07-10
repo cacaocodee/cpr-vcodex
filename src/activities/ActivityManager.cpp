@@ -6,12 +6,15 @@
 
 #include "../CrossPointSettings.h"
 #include "../CrossPointState.h"
+#include "../FeatureFlags.h"
 #include "Activity.h"
-#include "OpdsServerStore.h"
 #include "apps/AppsActivity.h"
 #include "boot_sleep/BootActivity.h"
 #include "boot_sleep/SleepActivity.h"
+#if CPR_ENABLE_OPDS
+#include "OpdsServerStore.h"
 #include "browser/OpdsBookBrowserActivity.h"
+#endif
 #include "home/CrashActivity.h"
 #include "home/FileBrowserActivity.h"
 #include "home/HomeActivity.h"
@@ -239,6 +242,7 @@ void ActivityManager::goToRecentBooks() {
 }
 
 void ActivityManager::goToBrowser() {
+#if CPR_ENABLE_OPDS
   const auto& servers = OPDS_STORE.getServers();
   // Skip the server picker when there's only one server configured
   if (servers.size() == 1) {
@@ -246,6 +250,9 @@ void ActivityManager::goToBrowser() {
   } else {
     replaceActivity(std::make_unique<OpdsServerListActivity>(renderer, mappedInput, true));
   }
+#else
+  goHome();
+#endif
 }
 
 void ActivityManager::goToReader(std::string path) {

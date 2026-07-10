@@ -32,9 +32,11 @@ const std::vector<SettingInfo>& getSettingsList() {
             StrId::STR_REFRESH_FREQ, &CrossPointSettings::refreshFrequency,
             {StrId::STR_PAGES_1, StrId::STR_PAGES_5, StrId::STR_PAGES_10, StrId::STR_PAGES_15, StrId::STR_PAGES_30},
             "refreshFrequency", StrId::STR_CAT_DISPLAY),
+#if CPR_ENABLE_EXTRA_THEMES
         SettingInfo::Enum(StrId::STR_UI_THEME, &CrossPointSettings::uiTheme,
                           {StrId::STR_THEME_LYRA, StrId::STR_THEME_LYRA_CUSTOM, StrId::STR_THEME_LYRA_CAROUSEL},
                           "uiTheme", StrId::STR_CAT_DISPLAY),
+#endif
         SettingInfo::Enum(StrId::STR_HOME_BOOK_SOURCE, &CrossPointSettings::homeBookSource,
                           {StrId::STR_RECENTS, StrId::STR_FAVORITES}, "homeBookSource", StrId::STR_CAT_DISPLAY),
         SettingInfo::Toggle(StrId::STR_ANTI_GHOSTING_EXPERIMENTAL, &CrossPointSettings::antiGhostingExperimental,
@@ -177,9 +179,11 @@ const std::vector<SettingInfo>& getSettingsList() {
         SettingInfo::Enum(StrId::STR_FLASHCARDS, &CrossPointSettings::flashcardsShortcut,
                           {StrId::STR_HOME_LOCATION, StrId::STR_APPS}, "flashcardsShortcut",
                           StrId::STR_SHORTCUTS_SECTION),
+#if CPR_ENABLE_DICTIONARY
         SettingInfo::Enum(StrId::STR_DICTIONARY, &CrossPointSettings::dictionaryShortcut,
                           {StrId::STR_HOME_LOCATION, StrId::STR_APPS}, "dictionaryShortcut",
                           StrId::STR_SHORTCUTS_SECTION),
+#endif
         SettingInfo::Enum(StrId::STR_FILE_TRANSFER, &CrossPointSettings::fileTransferShortcut,
                           {StrId::STR_HOME_LOCATION, StrId::STR_APPS}, "fileTransferShortcut",
                           StrId::STR_SHORTCUTS_SECTION),
@@ -223,9 +227,11 @@ const std::vector<SettingInfo>& getSettingsList() {
                             "koSyncAutoPullOnOpen", StrId::STR_KOREADER_SYNC),
         SettingInfo::Toggle(StrId::STR_KO_AUTO_PUSH_ON_CLOSE, &CrossPointSettings::koSyncAutoPushOnClose,
                             "koSyncAutoPushOnClose", StrId::STR_KOREADER_SYNC),
+#if CPR_ENABLE_OPDS
         SettingInfo::Enum(StrId::STR_OPDS_FILENAME_FORMAT, &CrossPointSettings::opdsFilenameFormat,
                           {StrId::STR_AUTHOR_TITLE, StrId::STR_TITLE_AUTHOR}, "opdsFilenameFormat",
                           StrId::STR_KOREADER_SYNC),
+#endif
         // --- Status Bar Settings (web-only, uses StatusBarSettingsActivity) ---
         SettingInfo::Toggle(StrId::STR_CHAPTER_PAGE_COUNT, &CrossPointSettings::statusBarChapterPageCount,
                             "statusBarChapterPageCount", StrId::STR_CUSTOMISE_STATUS_BAR),

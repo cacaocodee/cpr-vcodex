@@ -16,9 +16,12 @@
 
 #include "AchievementsStore.h"
 #include "CrossPointSettings.h"
+#include "FeatureFlags.h"
 #include "FontInstaller.h"
 #include "KOReaderCredentialStore.h"
+#if CPR_ENABLE_OPDS
 #include "OpdsServerStore.h"
+#endif
 #include "ReadingStatsStore.h"
 #include "RecentBooksStore.h"
 #include "SdCardFontGlobals.h"
@@ -246,7 +249,9 @@ constexpr StrId OPT_SLEEP_FILTER[] = {StrId::STR_NONE_OPT, StrId::STR_FILTER_CON
 constexpr StrId OPT_HIDE_BATTERY[] = {StrId::STR_NEVER, StrId::STR_IN_READER, StrId::STR_ALWAYS};
 constexpr StrId OPT_REFRESH_FREQ[] = {StrId::STR_PAGES_1, StrId::STR_PAGES_5, StrId::STR_PAGES_10, StrId::STR_PAGES_15,
                                       StrId::STR_PAGES_30};
+#if CPR_ENABLE_EXTRA_THEMES
 constexpr StrId OPT_UI_THEME[] = {StrId::STR_THEME_LYRA, StrId::STR_THEME_LYRA_CUSTOM, StrId::STR_THEME_LYRA_CAROUSEL};
+#endif
 constexpr StrId OPT_FONT_FAMILY[] = {StrId::STR_BOOKERLY, StrId::STR_NOTO_SANS, StrId::STR_LEXEND};
 constexpr StrId OPT_FONT_SIZE[] = {StrId::STR_X_SMALL, StrId::STR_SMALL, StrId::STR_MEDIUM, StrId::STR_LARGE,
                                    StrId::STR_X_LARGE};
@@ -283,7 +288,9 @@ constexpr StrId OPT_SESSION_SIZE[] = {StrId::STR_NUM_10, StrId::STR_NUM_20, StrI
 constexpr StrId OPT_HOME_BOOK_SOURCE[] = {StrId::STR_RECENTS, StrId::STR_FAVORITES};
 constexpr StrId OPT_SHORTCUT_LOCATION[] = {StrId::STR_HOME_LOCATION, StrId::STR_APPS};
 constexpr StrId OPT_KO_MATCH[] = {StrId::STR_FILENAME, StrId::STR_BINARY};
+#if CPR_ENABLE_OPDS
 constexpr StrId OPT_OPDS_FILENAME_FORMAT[] = {StrId::STR_AUTHOR_TITLE, StrId::STR_TITLE_AUTHOR};
+#endif
 constexpr StrId OPT_BOOK_CHAPTER_HIDE[] = {StrId::STR_BOOK, StrId::STR_CHAPTER, StrId::STR_HIDE};
 constexpr StrId OPT_BAR_THICKNESS[] = {StrId::STR_PROGRESS_BAR_THIN, StrId::STR_PROGRESS_BAR_MEDIUM,
                                        StrId::STR_PROGRESS_BAR_THICK};
@@ -332,7 +339,9 @@ constexpr WebSettingDef WEB_SETTINGS[] = {
     WEB_ENUM(StrId::STR_HIDE_BATTERY, hideBatteryPercentage, OPT_HIDE_BATTERY, "hideBatteryPercentage",
              StrId::STR_CAT_DISPLAY),
     WEB_ENUM(StrId::STR_REFRESH_FREQ, refreshFrequency, OPT_REFRESH_FREQ, "refreshFrequency", StrId::STR_CAT_DISPLAY),
+#if CPR_ENABLE_EXTRA_THEMES
     WEB_ENUM(StrId::STR_UI_THEME, uiTheme, OPT_UI_THEME, "uiTheme", StrId::STR_CAT_DISPLAY),
+#endif
     WEB_ENUM(StrId::STR_HOME_BOOK_SOURCE, homeBookSource, OPT_HOME_BOOK_SOURCE, "homeBookSource",
              StrId::STR_CAT_DISPLAY),
     WEB_TOGGLE(StrId::STR_ANTI_GHOSTING_EXPERIMENTAL, antiGhostingExperimental, "antiGhostingExperimental",
@@ -424,8 +433,10 @@ constexpr WebSettingDef WEB_SETTINGS[] = {
     WEB_TOGGLE(StrId::STR_KO_AUTO_PULL_ON_OPEN, koSyncAutoPullOnOpen, "koSyncAutoPullOnOpen", StrId::STR_KOREADER_SYNC),
     WEB_TOGGLE(StrId::STR_KO_AUTO_PUSH_ON_CLOSE, koSyncAutoPushOnClose, "koSyncAutoPushOnClose",
                StrId::STR_KOREADER_SYNC),
+#if CPR_ENABLE_OPDS
     WEB_ENUM(StrId::STR_OPDS_FILENAME_FORMAT, opdsFilenameFormat, OPT_OPDS_FILENAME_FORMAT, "opdsFilenameFormat",
              StrId::STR_KOREADER_SYNC),
+#endif
 
     WEB_TOGGLE(StrId::STR_CHAPTER_PAGE_COUNT, statusBarChapterPageCount, "statusBarChapterPageCount",
                StrId::STR_CUSTOMISE_STATUS_BAR),
@@ -553,10 +564,12 @@ void CrossPointWebServer::begin() {
   server->on("/api/if-found", HTTP_GET, [this] { handleGetIfFound(); });
   server->on("/api/if-found", HTTP_POST, [this] { handlePostIfFound(); });
 
+#if CPR_ENABLE_OPDS
   // OPDS server endpoints
   server->on("/api/opds", HTTP_GET, [this] { handleGetOpdsServers(); });
   server->on("/api/opds", HTTP_POST, [this] { handlePostOpdsServer(); });
   server->on("/api/opds/delete", HTTP_POST, [this] { handleDeleteOpdsServer(); });
+#endif
 
   server->onNotFound([this] { handleNotFound(); });
   LOG_DBG("WEB", "[MEM] Free heap after route setup: %d bytes", ESP.getFreeHeap());
@@ -1963,6 +1976,12 @@ void CrossPointWebServer::handlePostSettings() {
             SETTINGS.*(s.valuePtr) = static_cast<uint8_t>(val);
             if (s.valuePtr == &CrossPointSettings::fontFamily) {
               SETTINGS.sdFontFamilyName[0] = '\0';
+#if !CPR_ENABLE_EXTRA_FONTS
+              // Lexend/NotoSans are not compiled in; reject them from the web UI.
+              if (SETTINGS.fontFamily != CrossPointSettings::BOOKERLY) {
+                SETTINGS.fontFamily = CrossPointSettings::BOOKERLY;
+              }
+#endif
             }
             if (s.valuePtr == &CrossPointSettings::readingStatsAutoBackup &&
                 SETTINGS.readingStatsAutoBackup != previousValue &&
@@ -2031,6 +2050,7 @@ void CrossPointWebServer::handlePostSettings() {
 
 // ---- OPDS Server API ----
 
+#if CPR_ENABLE_OPDS
 void CrossPointWebServer::handleGetOpdsServers() const {
   const auto& servers = OPDS_STORE.getServers();
 
@@ -2139,6 +2159,7 @@ void CrossPointWebServer::handleDeleteOpdsServer() {
   LOG_DBG("WEB", "Deleted OPDS server at index %d", idx);
   server->send(200, "text/plain", "OK");
 }
+#endif  // CPR_ENABLE_OPDS
 
 // WebSocket callback trampoline
 void CrossPointWebServer::wsEventCallback(uint8_t num, WStype_t type, uint8_t* payload, size_t length) {

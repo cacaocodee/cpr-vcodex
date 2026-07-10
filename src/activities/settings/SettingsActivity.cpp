@@ -19,10 +19,13 @@
 #include "CrossPointSettings.h"
 #include "FontDownloadActivity.h"
 #include "FontSelectionActivity.h"
+#include "FeatureFlags.h"
 #include "KOReaderSettingsActivity.h"
 #include "LanguageSelectActivity.h"
 #include "MappedInputManager.h"
+#if CPR_ENABLE_OPDS
 #include "OpdsServerListActivity.h"
+#endif
 #include "OtaUpdateActivity.h"
 #include "ReadingStatsImportActivity.h"
 #include "ReadingStatsStore.h"
@@ -154,9 +157,11 @@ const std::vector<SettingInfo>& getDeviceSystemSettings() {
       SettingInfo::Toggle(StrId::STR_SHOW_HIDDEN_FILES, &CrossPointSettings::showHiddenFiles),
       SettingInfo::Action(StrId::STR_WIFI_NETWORKS, SettingAction::Network),
       SettingInfo::Action(StrId::STR_KOREADER_SYNC, SettingAction::KOReaderSync),
+#if CPR_ENABLE_OPDS
       SettingInfo::Enum(StrId::STR_OPDS_FILENAME_FORMAT, &CrossPointSettings::opdsFilenameFormat,
                         {StrId::STR_AUTHOR_TITLE, StrId::STR_TITLE_AUTHOR}),
       SettingInfo::Action(StrId::STR_OPDS_SERVERS, SettingAction::OPDSBrowser),
+#endif
       SettingInfo::Action(StrId::STR_CLEAR_READING_CACHE, SettingAction::ClearCache),
       SettingInfo::Action(StrId::STR_CHECK_UPDATES, SettingAction::CheckForUpdates),
       SettingInfo::Action(StrId::STR_SD_FIRMWARE_UPDATE, SettingAction::SdFirmwareUpdate),
@@ -176,7 +181,9 @@ const std::vector<SettingInfo>& getDeviceOnlySystemSettings() {
   static const std::vector<SettingInfo> settings = {
       SettingInfo::Action(StrId::STR_WIFI_NETWORKS, SettingAction::Network),
       SettingInfo::Action(StrId::STR_KOREADER_SYNC, SettingAction::KOReaderSync),
+#if CPR_ENABLE_OPDS
       SettingInfo::Action(StrId::STR_OPDS_SERVERS, SettingAction::OPDSBrowser),
+#endif
       SettingInfo::Action(StrId::STR_CLEAR_READING_CACHE, SettingAction::ClearCache),
       SettingInfo::Action(StrId::STR_CHECK_UPDATES, SettingAction::CheckForUpdates),
       SettingInfo::Action(StrId::STR_SD_FIRMWARE_UPDATE, SettingAction::SdFirmwareUpdate),
@@ -645,9 +652,11 @@ void SettingsActivity::toggleCurrentSetting() {
       case SettingAction::KOReaderSync:
         startActivityForResult(std::make_unique<KOReaderSettingsActivity>(renderer, mappedInput), resultHandler);
         break;
+#if CPR_ENABLE_OPDS
       case SettingAction::OPDSBrowser:
         startActivityForResult(std::make_unique<OpdsServerListActivity>(renderer, mappedInput), resultHandler);
         break;
+#endif
       case SettingAction::Network:
         startActivityForResult(std::make_unique<WifiSelectionActivity>(renderer, mappedInput, false), resultHandler);
         break;

@@ -1,3 +1,7 @@
+#include "FeatureFlags.h"
+
+#if CPR_ENABLE_DICTIONARY
+
 #include "DictionaryStore.h"
 
 #include <ArduinoJson.h>
@@ -2014,3 +2018,5 @@ void DictionaryStore::addHistory(const std::string& word) {
 }
 
 void DictionaryStore::clearHistory() { Storage.remove(HISTORY_PATH); }
+
+#endif  // CPR_ENABLE_DICTIONARY

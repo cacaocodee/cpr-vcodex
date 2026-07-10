@@ -1,3 +1,7 @@
+#include "FeatureFlags.h"
+
+#if CPR_ENABLE_OPDS
+
 #include "OpdsServerListActivity.h"
 
 #include <GfxRenderer.h>
@@ -131,3 +135,5 @@ void OpdsServerListActivity::render(RenderLock&&) {
 
   renderer.displayBuffer();
 }
+
+#endif  // CPR_ENABLE_OPDS

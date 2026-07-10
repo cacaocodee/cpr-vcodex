@@ -7,7 +7,10 @@
 
 #include "AchievementsActivity.h"
 #include "BookmarksAppActivity.h"
+#include "FeatureFlags.h"
+#if CPR_ENABLE_DICTIONARY
 #include "DictionaryActivity.h"
+#endif
 #include "FavoritesAppActivity.h"
 #include "FlashcardsAppActivity.h"
 #include "IfFoundActivity.h"
@@ -19,7 +22,9 @@
 #include "SyncDayActivity.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
+#if CPR_ENABLE_OPDS
 #include "OpdsServerStore.h"
+#endif
 #include "util/HeaderDateUtils.h"
 #include "util/ShortcutUiMetadata.h"
 
@@ -39,6 +44,7 @@ std::string buildAppsHeaderSubtitle(const int selectedIndex, const int totalItem
 void AppsActivity::onEnter() {
   Activity::onEnter();
   appShortcuts = getConfiguredShortcuts(CrossPointSettings::SHORTCUT_APPS);
+#if CPR_ENABLE_OPDS
   if (!OPDS_STORE.hasServers()) {
     appShortcuts.erase(std::remove_if(appShortcuts.begin(), appShortcuts.end(),
                                       [](const ShortcutDefinition* definition) {
@@ -46,6 +52,7 @@ void AppsActivity::onEnter() {
                                       }),
                        appShortcuts.end());
   }
+#endif
   selectedIndex = 0;
   rebuildShortcutSubtitles();
   requestUpdate();
@@ -187,9 +194,11 @@ void AppsActivity::openSelectedApp() {
     case ShortcutId::Flashcards:
       activity = std::make_unique<FlashcardsAppActivity>(renderer, mappedInput);
       break;
+#if CPR_ENABLE_DICTIONARY
     case ShortcutId::Dictionary:
       activity = std::make_unique<DictionaryActivity>(renderer, mappedInput);
       break;
+#endif
     case ShortcutId::FileTransfer:
       activityManager.goToFileTransfer();
       return;
@@ -199,9 +208,11 @@ void AppsActivity::openSelectedApp() {
     case ShortcutId::Sleep:
       activity = std::make_unique<SleepAppActivity>(renderer, mappedInput);
       break;
+#if CPR_ENABLE_OPDS
     case ShortcutId::OpdsBrowser:
       activityManager.goToBrowser();
       return;
+#endif
   }
 
   startActivityForResult(std::move(activity), [this](const ActivityResult&) {

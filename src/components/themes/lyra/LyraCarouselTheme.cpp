@@ -1,3 +1,7 @@
+#include "FeatureFlags.h"
+
+#if CPR_ENABLE_EXTRA_THEMES
+
 #include "LyraCarouselTheme.h"
 
 #include <Bitmap.h>
@@ -352,3 +356,5 @@ void LyraCarouselTheme::drawTabBar(const GfxRenderer& renderer, Rect rect, const
                                    bool selected) const {
   LyraTheme::drawTabBar(renderer, rect, tabs, selected);
 }
+
+#endif  // CPR_ENABLE_EXTRA_THEMES

@@ -5,6 +5,7 @@
 
 #include <algorithm>
 
+#include "FeatureFlags.h"
 #include "MappedInputManager.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
@@ -29,9 +30,11 @@ std::vector<EpubReaderMenuActivity::MenuItem> EpubReaderMenuActivity::buildMenuI
   if (hasFootnotes) {
     items.push_back({MenuAction::FOOTNOTES, StrId::STR_FOOTNOTES});
   }
+#if CPR_ENABLE_DICTIONARY
   items.push_back({MenuAction::LOOK_UP_WORD, StrId::STR_LOOK_UP_WORD});
   items.push_back({MenuAction::LOOKUP_HISTORY, StrId::STR_LOOKUP_HISTORY});
   items.push_back({MenuAction::DICTIONARY, StrId::STR_DICTIONARY});
+#endif
   items.push_back({MenuAction::VIEW_BOOKMARKS, StrId::STR_VIEW_BOOKMARKS});
   items.push_back({MenuAction::SAVE_BOOKMARK, StrId::STR_SAVE_BOOKMARK});
   items.push_back({MenuAction::ROTATE_SCREEN, StrId::STR_ORIENTATION});

@@ -14,8 +14,11 @@
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "FavoritesStore.h"
+#include "FeatureFlags.h"
 #include "KOReaderCredentialStore.h"
+#if CPR_ENABLE_OPDS
 #include "OpdsServerStore.h"
+#endif
 #include "ReadingStatsStore.h"
 #include "RecentBooksStore.h"
 #include "SettingsList.h"
@@ -321,6 +324,14 @@ bool loadSettingsDirect(CrossPointSettings& s, const JsonDocument& doc, bool* ne
   } else {
     s.fontFamily = rawFontFamily;
   }
+#if !CPR_ENABLE_EXTRA_FONTS
+  // Lexend/NotoSans are not compiled in; clamp stale selections so text
+  // never renders with a missing font.
+  if (s.fontFamily != CrossPointSettings::BOOKERLY) {
+    s.fontFamily = CrossPointSettings::BOOKERLY;
+    if (needsResave) *needsResave = true;
+  }
+#endif
   loadString("sdFontFamilyName", s.sdFontFamilyName, sizeof(s.sdFontFamilyName));
 
   loadEnum("fontSize", s.fontSize, CrossPointSettings::FONT_SIZE_COUNT);
@@ -929,6 +940,14 @@ bool JsonSettingsIO::loadSettings(CrossPointSettings& s, const char* json, bool*
   } else {
     s.fontFamily = rawFontFamily;
   }
+#if !CPR_ENABLE_EXTRA_FONTS
+  // Lexend/NotoSans are not compiled in; clamp stale selections so text
+  // never renders with a missing font.
+  if (s.fontFamily != CrossPointSettings::BOOKERLY) {
+    s.fontFamily = CrossPointSettings::BOOKERLY;
+    if (needsResave) *needsResave = true;
+  }
+#endif
 
   using S = CrossPointSettings;
   s.frontButtonBack =
@@ -1585,6 +1604,7 @@ bool JsonSettingsIO::loadAchievementsFromFile(AchievementsStore& store, const ch
 // Follows the same save/load pattern as WifiCredentialStore above.
 // Passwords are XOR-obfuscated with the device MAC and base64-encoded ("password_obf" key).
 
+#if CPR_ENABLE_OPDS
 bool JsonSettingsIO::saveOpds(const OpdsServerStore& store, const char* path) {
   JsonDocument doc;
 
@@ -1633,3 +1653,4 @@ bool JsonSettingsIO::loadOpds(OpdsServerStore& store, const char* json, bool* ne
   LOG_DBG("OPS", "Loaded %zu OPDS servers from file", store.servers.size());
   return true;
 }
+#endif  // CPR_ENABLE_OPDS

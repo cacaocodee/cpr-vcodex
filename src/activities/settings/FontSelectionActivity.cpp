@@ -4,9 +4,19 @@
 #include <I18n.h>
 
 #include "CrossPointSettings.h"
+#include "FeatureFlags.h"
 #include "MappedInputManager.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
+
+namespace {
+// Number of built-in rows at the top of the font list; SD-card fonts follow.
+#if CPR_ENABLE_EXTRA_FONTS
+constexpr int kBuiltinFontRows = CrossPointSettings::BUILTIN_FONT_COUNT;
+#else
+constexpr int kBuiltinFontRows = 1;  // Bookerly only
+#endif
+}  // namespace
 
 FontSelectionActivity::FontSelectionActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
                                              const SdCardFontRegistry* registry)
@@ -20,8 +30,10 @@ void FontSelectionActivity::onEnter() {
   fonts_.reserve(CrossPointSettings::BUILTIN_FONT_COUNT + (registry_ ? registry_->getFamilyCount() : 0));
 
   fonts_.push_back({I18N.get(StrId::STR_BOOKERLY), true, CrossPointSettings::BOOKERLY});
+#if CPR_ENABLE_EXTRA_FONTS
   fonts_.push_back({I18N.get(StrId::STR_NOTO_SANS), true, CrossPointSettings::NOTOSANS});
   fonts_.push_back({I18N.get(StrId::STR_LEXEND), true, CrossPointSettings::LEXEND});
+#endif
 
   if (registry_) {
     const auto& families = registry_->getFamilies();
@@ -36,12 +48,12 @@ void FontSelectionActivity::onEnter() {
     const auto& families = registry_->getFamilies();
     for (int i = 0; i < static_cast<int>(families.size()); i++) {
       if (families[i].name == SETTINGS.sdFontFamilyName) {
-        selectedIndex_ = CrossPointSettings::BUILTIN_FONT_COUNT + i;
+        selectedIndex_ = kBuiltinFontRows + i;
         break;
       }
     }
   } else {
-    selectedIndex_ = SETTINGS.fontFamily < CrossPointSettings::BUILTIN_FONT_COUNT ? SETTINGS.fontFamily : 0;
+    selectedIndex_ = SETTINGS.fontFamily < kBuiltinFontRows ? SETTINGS.fontFamily : 0;
   }
 
   requestUpdate();

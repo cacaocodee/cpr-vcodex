@@ -21,8 +21,11 @@
 #include "EpubReaderChapterSelectionActivity.h"
 #include "EpubReaderFootnotesActivity.h"
 #include "EpubReaderPercentSelectionActivity.h"
+#include "FeatureFlags.h"
+#if CPR_ENABLE_DICTIONARY
 #include "DictionaryHistoryActivity.h"
 #include "DictionaryWordSelectActivity.h"
+#endif
 #include "KOReaderCredentialStore.h"
 #include "KOReaderSyncActivity.h"
 #include "MappedInputManager.h"
@@ -34,7 +37,9 @@
 #include "ReadingStatsStore.h"
 #include "RecentBooksStore.h"
 #include "SdCardFontGlobals.h"
+#if CPR_ENABLE_DICTIONARY
 #include "activities/apps/DictionaryActivity.h"
+#endif
 #include "activities/apps/ReadingStatsDetailActivity.h"
 #include "activities/util/ConfirmationActivity.h"
 #include "components/UITheme.h"
@@ -842,6 +847,7 @@ void EpubReaderActivity::onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction 
       });
       break;
     }
+#if CPR_ENABLE_DICTIONARY
     case EpubReaderMenuActivity::MenuAction::LOOK_UP_WORD: {
       int overlayMarginLeft = 0;
       int overlayMarginTop = 0;
@@ -890,6 +896,7 @@ void EpubReaderActivity::onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction 
                              });
       break;
     }
+#endif  // CPR_ENABLE_DICTIONARY
     case EpubReaderMenuActivity::MenuAction::VIEW_BOOKMARKS: {
       READING_STATS.noteActivity();
       startActivityForResult(std::make_unique<BookmarksActivity>(

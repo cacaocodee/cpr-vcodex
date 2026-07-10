@@ -1,3 +1,7 @@
+#include "FeatureFlags.h"
+
+#if CPR_ENABLE_DICTIONARY
+
 #include "DictionaryWordSelectActivity.h"
 
 #include <FontCacheManager.h>
@@ -500,3 +504,5 @@ void DictionaryWordSelectActivity::render(RenderLock&&) {
   drawSelectionHighlight();
   renderer.displayBuffer(HalDisplay::FAST_REFRESH);
 }
+
+#endif  // CPR_ENABLE_DICTIONARY

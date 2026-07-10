@@ -1,3 +1,7 @@
+#include "FeatureFlags.h"
+
+#if CPR_ENABLE_DICTIONARY
+
 #include "DictionaryActivity.h"
 
 #include <GfxRenderer.h>
@@ -190,3 +194,5 @@ void DictionaryActivity::render(RenderLock&&) {
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
   renderer.displayBuffer();
 }
+
+#endif  // CPR_ENABLE_DICTIONARY
