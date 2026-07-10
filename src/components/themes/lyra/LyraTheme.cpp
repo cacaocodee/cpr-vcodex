@@ -748,15 +748,31 @@ void LyraTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount
                                const std::function<bool(int index)>& showAccessory) const {
   const int availableHeight = std::max(0, rect.height);
   const int gap = LyraMetrics::values.menuSpacing;
+  const int fullRowHeight = LyraMetrics::values.menuRowHeight;
+  // A tile stays legible down to a single centered title line; below that the
+  // rows would overlap (seen when landscape leaves little room under the
+  // covers), so overflow into extra columns instead of squeezing further.
+  const int minRowHeight = renderer.getLineHeight(UI_12_FONT_ID) + 10;
+  int columns = 1;
+  int rows = std::max(1, buttonCount);
+  if (buttonCount > 0) {
+    const int rowsThatFit = std::max(1, (availableHeight + gap) / (minRowHeight + gap));
+    columns = std::min(3, (buttonCount + rowsThatFit - 1) / rowsThatFit);
+    columns = std::max(1, columns);
+    rows = (buttonCount + columns - 1) / columns;
+  }
   const int rowHeight =
-      buttonCount > 0
-          ? std::min(LyraMetrics::values.menuRowHeight, (availableHeight - gap * std::max(0, buttonCount - 1)) / buttonCount)
-          : LyraMetrics::values.menuRowHeight;
+      std::max(minRowHeight, std::min(fullRowHeight, (availableHeight - gap * std::max(0, rows - 1)) / rows));
+
+  const int menuWidth = rect.width - LyraMetrics::values.contentSidePadding * 2;
+  const int tileWidth = (menuWidth - gap * (columns - 1)) / columns;
 
   for (int i = 0; i < buttonCount; ++i) {
-    int tileWidth = rect.width - LyraMetrics::values.contentSidePadding * 2;
-    Rect tileRect = Rect{rect.x + LyraMetrics::values.contentSidePadding, rect.y + i * (rowHeight + gap), tileWidth,
-                         rowHeight};
+    // Column-major: Up/Down walks down a column before moving to the next.
+    const int col = i / rows;
+    const int row = i % rows;
+    Rect tileRect = Rect{rect.x + LyraMetrics::values.contentSidePadding + col * (tileWidth + gap),
+                         rect.y + row * (rowHeight + gap), tileWidth, rowHeight};
 
     const bool selected = selectedIndex == i;
 
@@ -778,7 +794,9 @@ void LyraTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount
     }
 
     const std::string subtitle = buttonSubtitle ? buttonSubtitle(i) : std::string();
-    const bool hasSubtitle = !subtitle.empty();
+    // The two-line layout draws the subtitle at a fixed +36 offset; skip it
+    // when the row is too short (compact landscape grid) to avoid overlap.
+    const bool hasSubtitle = !subtitle.empty() && rowHeight >= 56;
     if (hasSubtitle) {
       renderer.drawText(UI_12_FONT_ID, textX, tileRect.y + 8, label, true);
 
