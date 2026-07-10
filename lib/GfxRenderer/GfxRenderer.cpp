@@ -1000,7 +1000,40 @@ void GfxRenderer::drawImage(const uint8_t bitmap[], const int x, const int y, co
   display.drawImage(bitmap, rotatedX, rotatedY, width, height);
 }
 
+namespace {
+// Icon bitmaps are stored pre-rotated for the portrait fast path: rows run
+// along the logical X axis (one row per logical column), row length is the
+// logical height, and 0-bits are ink. The fast paths blit them with a
+// hardcoded portrait transform, so for any other orientation recover each
+// logical pixel and plot it through the orientation-aware pixel setters.
+void drawStoredIconPixels(const GfxRenderer& renderer, const uint8_t bitmap[], const int x, const int y,
+                          const int width, const int height, const bool darkModeAware, const bool inkState) {
+  const int stride = (height + 7) / 8;
+  const int screenW = renderer.getScreenWidth();
+  const int screenH = renderer.getScreenHeight();
+  for (int r = 0; r < width; ++r) {
+    const int lx = x + width - 1 - r;
+    if (lx < 0 || lx >= screenW) continue;
+    for (int c = 0; c < height; ++c) {
+      const int ly = y + c;
+      if (ly < 0 || ly >= screenH) continue;
+      const bool ink = ((bitmap[r * stride + (c >> 3)] >> (7 - (c & 7))) & 1) == 0;
+      if (!ink) continue;
+      if (darkModeAware) {
+        renderer.drawPixel(lx, ly, inkState);
+      } else {
+        renderer.drawPixelDirect(lx, ly, inkState);
+      }
+    }
+  }
+}
+}  // namespace
+
 void GfxRenderer::drawIcon(const uint8_t bitmap[], const int x, const int y, const int width, const int height) const {
+  if (orientation != Portrait) {
+    drawStoredIconPixels(*this, bitmap, x, y, width, height, true, true);
+    return;
+  }
   const int destX = y;
   const int destY = getScreenWidth() - width - x;
   if (!(darkMode && renderMode == BW)) {
@@ -1015,6 +1048,10 @@ void GfxRenderer::drawIcon(const uint8_t bitmap[], const int x, const int y, con
 
 void GfxRenderer::drawIconBlack(const uint8_t bitmap[], const int x, const int y, const int width,
                                 const int height) const {
+  if (orientation != Portrait) {
+    drawStoredIconPixels(*this, bitmap, x, y, width, height, false, true);
+    return;
+  }
   const int destX = y;
   const int destY = getScreenWidth() - width - x;
   display.drawImageTransparent(bitmap, destX, destY, height, width);
@@ -1022,6 +1059,11 @@ void GfxRenderer::drawIconBlack(const uint8_t bitmap[], const int x, const int y
 
 void GfxRenderer::drawIconInverted(const uint8_t bitmap[], const int x, const int y, const int width,
                                    const int height) const {
+  if (orientation != Portrait) {
+    // Ink pixels are drawn white (bit set) by the portrait fast path below.
+    drawStoredIconPixels(*this, bitmap, x, y, width, height, false, false);
+    return;
+  }
   const int physX = y;
   const int physY = getScreenWidth() - width - x;
   const int imgW = height;

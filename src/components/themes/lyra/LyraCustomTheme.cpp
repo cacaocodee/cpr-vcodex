@@ -69,9 +69,20 @@ void LyraCustomTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, cons
               const float ratio = coverWidth / coverHeight;
               const float tileRatio =
                   static_cast<float>(tileWidth - 2 * H_PADDING) / static_cast<float>(LyraCustomMetrics::values.homeCoverHeight);
-              const float cropX = 1.0f - (tileRatio / ratio);
+              // A negative crop (tile wider than the cover, e.g. landscape)
+              // makes drawBitmap sample out of range; center the cover instead.
+              const float cropX = (ratio > tileRatio) ? 1.0f - (tileRatio / ratio) : 0.0f;
+              int coverDrawX = tileX + H_PADDING;
+              int coverMaxW = tileWidth - 2 * H_PADDING;
+              if (cropX == 0.0f) {
+                const int scaledW = std::min(
+                    coverMaxW,
+                    static_cast<int>(ratio * static_cast<float>(LyraCustomMetrics::values.homeCoverHeight) + 0.5f));
+                coverDrawX += (coverMaxW - scaledW) / 2;
+                coverMaxW = scaledW;
+              }
 
-              renderer.drawBitmap(bitmap, tileX + H_PADDING, tileY + H_PADDING, tileWidth - 2 * H_PADDING,
+              renderer.drawBitmap(bitmap, coverDrawX, tileY + H_PADDING, coverMaxW,
                                   LyraCustomMetrics::values.homeCoverHeight, cropX);
             } else {
               hasCover = false;
