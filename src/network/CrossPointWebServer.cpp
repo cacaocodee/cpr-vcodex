@@ -755,6 +755,9 @@ CrossPointWebServer::WsUploadStatus CrossPointWebServer::getWsUploadStatus() con
 
 static void sendHtmlContent(WebServer* server, const char* data, size_t len) {
   server->sendHeader("Content-Encoding", "gzip");
+  // Pages change with every firmware update; without this, browsers keep
+  // serving stale copies (e.g. the pre-CrossViet branding) indefinitely.
+  server->sendHeader("Cache-Control", "no-cache");
   server->send_P(200, "text/html", data, len);
 }
 
