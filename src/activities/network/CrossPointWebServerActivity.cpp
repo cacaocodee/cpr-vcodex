@@ -8,6 +8,7 @@
 #include <WiFi.h>
 #include <esp_task_wdt.h>
 
+#include <algorithm>
 #include <cstddef>
 
 #include "MappedInputManager.h"
@@ -440,63 +441,110 @@ void CrossPointWebServerActivity::renderServerRunning() const {
 
   int startY = metrics.topPadding + metrics.headerHeight + metrics.tabBarHeight + metrics.verticalSpacing * 2;
   int height10 = renderer.getLineHeight(UI_10_FONT_ID);
+  const int smallLine = renderer.getLineHeight(SMALL_FONT_ID);
+  // Keep content clear of the button hints; the tall stacked layout only fits
+  // portrait, so landscape uses side-by-side arrangements.
+  const int hintsTop = renderer.getScreenHeight() - metrics.buttonHintsHeight - metrics.verticalSpacing;
   if (isApMode) {
-    // AP mode display
-    renderer.drawText(UI_10_FONT_ID, metrics.contentSidePadding, startY, tr(STR_CONNECT_WIFI_HINT), true,
-                      EpdFontFamily::BOLD);
-    startY += height10 + metrics.verticalSpacing * 2;
-
-    // Show QR code for Wifi
     const std::string wifiConfig = std::string("WIFI:S:") + connectedSSID + ";;";
-    const Rect qrBoundsWifi(metrics.contentSidePadding, startY, QR_CODE_WIDTH, QR_CODE_HEIGHT);
-    QrUtils::drawQrCode(renderer, qrBoundsWifi, wifiConfig);
-
-    // Show network name
-    renderer.drawText(UI_10_FONT_ID, metrics.contentSidePadding + QR_CODE_WIDTH + metrics.verticalSpacing, startY + 80,
-                      connectedSSID.c_str());
-
-    startY += QR_CODE_HEIGHT + 2 * metrics.verticalSpacing;
-
-    // Show primary URL (hostname)
-    renderer.drawText(UI_10_FONT_ID, metrics.contentSidePadding, startY, tr(STR_OPEN_URL_HINT), true,
-                      EpdFontFamily::BOLD);
-    startY += height10 + metrics.verticalSpacing * 2;
-
     std::string hostnameUrl = std::string("http://") + AP_HOSTNAME + ".local/";
     std::string ipUrl = tr(STR_OR_HTTP_PREFIX) + connectedIP + "/";
 
-    // Show QR code for URL
-    const Rect qrBoundsUrl(metrics.contentSidePadding, startY, QR_CODE_WIDTH, QR_CODE_HEIGHT);
-    QrUtils::drawQrCode(renderer, qrBoundsUrl, hostnameUrl);
+    const int stackedHeight =
+        2 * (height10 + metrics.verticalSpacing * 2 + QR_CODE_HEIGHT) + 2 * metrics.verticalSpacing;
+    if (startY + stackedHeight <= hintsTop) {
+      // AP mode display
+      renderer.drawText(UI_10_FONT_ID, metrics.contentSidePadding, startY, tr(STR_CONNECT_WIFI_HINT), true,
+                        EpdFontFamily::BOLD);
+      startY += height10 + metrics.verticalSpacing * 2;
 
-    // Show IP address as fallback
-    renderer.drawText(UI_10_FONT_ID, metrics.contentSidePadding + QR_CODE_WIDTH + metrics.verticalSpacing, startY + 80,
-                      hostnameUrl.c_str());
-    renderer.drawText(SMALL_FONT_ID, metrics.contentSidePadding + QR_CODE_WIDTH + metrics.verticalSpacing, startY + 100,
-                      ipUrl.c_str());
+      // Show QR code for Wifi
+      const Rect qrBoundsWifi(metrics.contentSidePadding, startY, QR_CODE_WIDTH, QR_CODE_HEIGHT);
+      QrUtils::drawQrCode(renderer, qrBoundsWifi, wifiConfig);
+
+      // Show network name
+      renderer.drawText(UI_10_FONT_ID, metrics.contentSidePadding + QR_CODE_WIDTH + metrics.verticalSpacing,
+                        startY + 80, connectedSSID.c_str());
+
+      startY += QR_CODE_HEIGHT + 2 * metrics.verticalSpacing;
+
+      // Show primary URL (hostname)
+      renderer.drawText(UI_10_FONT_ID, metrics.contentSidePadding, startY, tr(STR_OPEN_URL_HINT), true,
+                        EpdFontFamily::BOLD);
+      startY += height10 + metrics.verticalSpacing * 2;
+
+      // Show QR code for URL
+      const Rect qrBoundsUrl(metrics.contentSidePadding, startY, QR_CODE_WIDTH, QR_CODE_HEIGHT);
+      QrUtils::drawQrCode(renderer, qrBoundsUrl, hostnameUrl);
+
+      // Show IP address as fallback
+      renderer.drawText(UI_10_FONT_ID, metrics.contentSidePadding + QR_CODE_WIDTH + metrics.verticalSpacing,
+                        startY + 80, hostnameUrl.c_str());
+      renderer.drawText(SMALL_FONT_ID, metrics.contentSidePadding + QR_CODE_WIDTH + metrics.verticalSpacing,
+                        startY + 100, ipUrl.c_str());
+    } else {
+      // Compact (landscape): WiFi QR and URL QR side by side, captions above,
+      // labels below.
+      const int columnWidth = (pageWidth - 3 * metrics.contentSidePadding) / 2;
+      const int leftX = metrics.contentSidePadding;
+      const int rightX = metrics.contentSidePadding * 2 + columnWidth;
+      const int qrTop = startY + height10 + metrics.verticalSpacing;
+      const int labelY = qrTop + QR_CODE_HEIGHT + metrics.verticalSpacing;
+
+      renderer.drawText(UI_10_FONT_ID, leftX, startY, tr(STR_CONNECT_WIFI_HINT), true, EpdFontFamily::BOLD);
+      QrUtils::drawQrCode(renderer, Rect(leftX + (columnWidth - QR_CODE_WIDTH) / 2, qrTop, QR_CODE_WIDTH, QR_CODE_HEIGHT),
+                          wifiConfig);
+      renderer.drawText(UI_10_FONT_ID, leftX, labelY, connectedSSID.c_str());
+
+      renderer.drawText(UI_10_FONT_ID, rightX, startY, tr(STR_OPEN_URL_HINT), true, EpdFontFamily::BOLD);
+      QrUtils::drawQrCode(
+          renderer, Rect(rightX + (columnWidth - QR_CODE_WIDTH) / 2, qrTop, QR_CODE_WIDTH, QR_CODE_HEIGHT), hostnameUrl);
+      renderer.drawText(UI_10_FONT_ID, rightX, labelY, hostnameUrl.c_str());
+      renderer.drawText(SMALL_FONT_ID, rightX, labelY + height10 + 2, ipUrl.c_str());
+    }
   } else {
     startY += metrics.verticalSpacing * 2;
 
-    // STA mode display (original behavior)
-    // std::string ipInfo = "IP Address: " + connectedIP;
-    renderer.drawCenteredText(UI_10_FONT_ID, startY, tr(STR_OPEN_URL_HINT), true, EpdFontFamily::BOLD);
-    startY += height10;
-    renderer.drawCenteredText(UI_10_FONT_ID, startY, tr(STR_SCAN_QR_HINT), true, EpdFontFamily::BOLD);
-    startY += height10 + metrics.verticalSpacing * 2;
-
-    // Show QR code for URL
     std::string webInfo = "http://" + connectedIP + "/";
-    const Rect qrBounds((pageWidth - QR_CODE_WIDTH) / 2, startY, QR_CODE_WIDTH, QR_CODE_HEIGHT);
-    QrUtils::drawQrCode(renderer, qrBounds, webInfo);
-    startY += QR_CODE_HEIGHT + metrics.verticalSpacing * 2;
-
-    // Show web server URL prominently
-    renderer.drawCenteredText(UI_10_FONT_ID, startY, webInfo.c_str(), true);
-    startY += height10 + 5;
-
-    // Also show hostname URL
     std::string hostnameUrl = std::string(tr(STR_OR_HTTP_PREFIX)) + AP_HOSTNAME + ".local/";
-    renderer.drawCenteredText(SMALL_FONT_ID, startY, hostnameUrl.c_str(), true);
+
+    const int stackedHeight = 2 * height10 + metrics.verticalSpacing * 2 + QR_CODE_HEIGHT +
+                              metrics.verticalSpacing * 2 + height10 + 5 + smallLine;
+    if (startY + stackedHeight <= hintsTop) {
+      // STA mode display (original behavior)
+      renderer.drawCenteredText(UI_10_FONT_ID, startY, tr(STR_OPEN_URL_HINT), true, EpdFontFamily::BOLD);
+      startY += height10;
+      renderer.drawCenteredText(UI_10_FONT_ID, startY, tr(STR_SCAN_QR_HINT), true, EpdFontFamily::BOLD);
+      startY += height10 + metrics.verticalSpacing * 2;
+
+      // Show QR code for URL
+      const Rect qrBounds((pageWidth - QR_CODE_WIDTH) / 2, startY, QR_CODE_WIDTH, QR_CODE_HEIGHT);
+      QrUtils::drawQrCode(renderer, qrBounds, webInfo);
+      startY += QR_CODE_HEIGHT + metrics.verticalSpacing * 2;
+
+      // Show web server URL prominently
+      renderer.drawCenteredText(UI_10_FONT_ID, startY, webInfo.c_str(), true);
+      startY += height10 + 5;
+
+      // Also show hostname URL
+      renderer.drawCenteredText(SMALL_FONT_ID, startY, hostnameUrl.c_str(), true);
+    } else {
+      // Compact (landscape): QR on the left, instructions and URLs beside it.
+      const int qrX = metrics.contentSidePadding * 2;
+      const int qrY = startY + std::max(0, (hintsTop - startY - QR_CODE_HEIGHT) / 2);
+      QrUtils::drawQrCode(renderer, Rect(qrX, qrY, QR_CODE_WIDTH, QR_CODE_HEIGHT), webInfo);
+
+      const int textX = qrX + QR_CODE_WIDTH + metrics.contentSidePadding * 2;
+      const int textBlockHeight = 2 * height10 + metrics.verticalSpacing + height10 + 5 + smallLine;
+      int textY = qrY + std::max(0, (QR_CODE_HEIGHT - textBlockHeight) / 2);
+      renderer.drawText(UI_10_FONT_ID, textX, textY, tr(STR_OPEN_URL_HINT), true, EpdFontFamily::BOLD);
+      textY += height10;
+      renderer.drawText(UI_10_FONT_ID, textX, textY, tr(STR_SCAN_QR_HINT), true, EpdFontFamily::BOLD);
+      textY += height10 + metrics.verticalSpacing;
+      renderer.drawText(UI_10_FONT_ID, textX, textY, webInfo.c_str(), true);
+      textY += height10 + 5;
+      renderer.drawText(SMALL_FONT_ID, textX, textY, hostnameUrl.c_str(), true);
+    }
   }
 
   const auto labels = mappedInput.mapLabels(tr(STR_EXIT), "", "", "");
