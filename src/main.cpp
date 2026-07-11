@@ -173,6 +173,13 @@ void applyUiFontsForLanguage(const Language lang) {
   renderer.insertFont(UI_10_FONT_ID, ui10FontFamily);
   renderer.insertFont(UI_12_FONT_ID, ui12FontFamily);
 #else
+  // Ubuntu UI fonts have no Vietnamese (Latin Extended Additional) coverage.
+  // Book-derived text — chapter lists, titles, filenames — renders with the
+  // UI families regardless of UI language, so give them a NotoSans fallback
+  // for the codepoints they lack (idempotent; cheap to re-apply).
+  ui10FontFamily.setFallback(&notosans10FontFamily);
+  ui12FontFamily.setFallback(&notosans10FontFamily);
+  smallFontFamily.setFallback(&notosans10FontFamily);
   if (shouldUseNotoUiFonts(lang)) {
     // Keep Vietnamese UI at 10 pt for both slots to preserve existing layouts
     // while still providing full glyph coverage.

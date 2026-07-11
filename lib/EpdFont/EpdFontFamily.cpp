@@ -25,7 +25,27 @@ void EpdFontFamily::getTextDimensions(const char* string, int* w, int* h, const 
 const EpdFontData* EpdFontFamily::getData(const Style style) const { return getFont(style)->data; }
 
 const EpdGlyph* EpdFontFamily::getGlyph(const uint32_t cp, const Style style) const {
-  return getFont(style)->getGlyph(cp);
+  const EpdGlyph* glyph = getFont(style)->getGlyph(cp);
+  if (!glyph && fallback_) {
+    return fallback_->getGlyph(cp, style);
+  }
+  return glyph;
+}
+
+bool EpdFontFamily::resolveGlyph(const uint32_t cp, const Style style, const EpdGlyph** glyph,
+                                 const EpdFontData** data) const {
+  const EpdGlyph* found = getFont(style)->getGlyph(cp);
+  if (found) {
+    *glyph = found;
+    *data = getData(style);
+    return true;
+  }
+  if (fallback_) {
+    return fallback_->resolveGlyph(cp, style, glyph, data);
+  }
+  *glyph = nullptr;
+  *data = nullptr;
+  return false;
 }
 
 int8_t EpdFontFamily::getKerning(const uint32_t leftCp, const uint32_t rightCp, const Style style) const {

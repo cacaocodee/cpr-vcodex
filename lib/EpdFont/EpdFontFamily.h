@@ -24,15 +24,26 @@ class EpdFontFamily {
   ~EpdFontFamily() = default;
   void getTextDimensions(const char* string, int* w, int* h, Style style = REGULAR) const;
   const EpdFontData* getData(Style style = REGULAR) const;
+  // Returns the glyph for cp, consulting the fallback family when this
+  // family has no coverage (measurement then matches fallback rendering).
   const EpdGlyph* getGlyph(uint32_t cp, Style style = REGULAR) const;
   int8_t getKerning(uint32_t leftCp, uint32_t rightCp, Style style = REGULAR) const;
   uint32_t applyLigatures(uint32_t cp, const char*& text, Style style = REGULAR) const;
+
+  // Optional fallback consulted for codepoints this family lacks (e.g. the
+  // Ubuntu UI fonts have no Vietnamese Latin Extended Additional glyphs, so
+  // book titles/chapters fall back to NotoSans). A fallback glyph must be
+  // drawn with the fallback's own font data — use resolveGlyph() when the
+  // bitmap will be fetched.
+  void setFallback(const EpdFontFamily* fallback) { fallback_ = fallback; }
+  bool resolveGlyph(uint32_t cp, Style style, const EpdGlyph** glyph, const EpdFontData** data) const;
 
  private:
   const EpdFont* regular;
   const EpdFont* bold;
   const EpdFont* italic;
   const EpdFont* boldItalic;
+  const EpdFontFamily* fallback_ = nullptr;
 
   const EpdFont* getFont(Style style) const;
 };
