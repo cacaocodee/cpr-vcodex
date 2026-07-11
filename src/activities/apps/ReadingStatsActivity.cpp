@@ -27,6 +27,23 @@ constexpr int LIST_HEADER_BOTTOM_GAP = 10;
 constexpr int BOOK_ROW_HEIGHT = 80;
 constexpr int BOOK_ROW_GAP = 10;
 constexpr int BOOKS_PER_PAGE = 3;
+constexpr int LANDSCAPE_PANE_GAP = 16;
+
+// Portrait stacks the cards, details button, and book list vertically; that
+// tower is taller than a landscape screen, so landscape moves the book list
+// into a right-hand pane and fits as many rows as the height allows.
+int getBooksPerPage(const GfxRenderer& renderer) {
+  const int pageWidth = renderer.getScreenWidth();
+  const int pageHeight = renderer.getScreenHeight();
+  if (pageWidth <= pageHeight) {
+    return BOOKS_PER_PAGE;
+  }
+  const auto& metrics = UITheme::getInstance().getMetrics();
+  const int listHeaderTop = metrics.topPadding + metrics.headerHeight + metrics.verticalSpacing;
+  const int contentTop = listHeaderTop + LIST_HEADER_HEIGHT + LIST_HEADER_BOTTOM_GAP;
+  const int hintsTop = pageHeight - metrics.buttonHintsHeight - metrics.verticalSpacing;
+  return std::max(1, (hintsTop - contentTop + BOOK_ROW_GAP) / (BOOK_ROW_HEIGHT + BOOK_ROW_GAP));
+}
 
 std::string getBookTitle(const ReadingBookStats& book) { return book.title.empty() ? book.path : book.title; }
 
@@ -124,7 +141,7 @@ void ReadingStatsActivity::onExit() {
 void ReadingStatsActivity::loop() {
   const int bookCount = static_cast<int>(READING_STATS.getBooks().size());
   const int selectableCount = bookCount + 1;
-  const int pageItems = BOOKS_PER_PAGE;
+  const int pageItems = getBooksPerPage(renderer);
 
   if (waitForBackRelease) {
     if (!mappedInput.isPressed(MappedInputManager::Button::Back) &&
@@ -280,8 +297,13 @@ void ReadingStatsActivity::render(RenderLock&&) {
 
   const auto& metrics = UITheme::getInstance().getMetrics();
   const int pageWidth = renderer.getScreenWidth();
+  const int pageHeight = renderer.getScreenHeight();
+  const bool landscape = pageWidth > pageHeight;
   const int sidePadding = metrics.contentSidePadding;
-  const int cardWidth = (pageWidth - sidePadding * 2 - SUMMARY_GAP) / 2;
+  // Landscape: cards + details button in a left pane, book list in a right pane.
+  const int cardAreaWidth =
+      landscape ? (pageWidth - sidePadding * 2) * 45 / 100 : pageWidth - sidePadding * 2;
+  const int cardWidth = (cardAreaWidth - SUMMARY_GAP) / 2;
   const int summaryTop = metrics.topPadding + metrics.headerHeight + metrics.verticalSpacing;
   const int detailsTop = summaryTop + SUMMARY_CARD_HEIGHT * 3 + SUMMARY_GAP * 2 + metrics.verticalSpacing;
   const uint64_t todayReadingMs = READING_STATS.getTodayReadingMs();
@@ -309,31 +331,35 @@ void ReadingStatsActivity::render(RenderLock&&) {
                       cardWidth, SUMMARY_CARD_HEIGHT},
                  tr(STR_BOOKS_STARTED), std::to_string(READING_STATS.getBooksStartedCount()));
 
-  drawMoreDetailsButton(renderer, Rect{sidePadding, detailsTop, pageWidth - sidePadding * 2, DETAILS_BUTTON_HEIGHT},
+  drawMoreDetailsButton(renderer, Rect{sidePadding, detailsTop, cardAreaWidth, DETAILS_BUTTON_HEIGHT},
                         selectedIndex == 0);
 
-  const int listHeaderTop = detailsTop + DETAILS_BUTTON_HEIGHT + metrics.verticalSpacing;
+  const int booksPerPage = getBooksPerPage(renderer);
+  const int listX = landscape ? sidePadding + cardAreaWidth + LANDSCAPE_PANE_GAP : sidePadding;
+  const int listWidth = landscape ? pageWidth - listX - sidePadding : pageWidth - sidePadding * 2;
+  const int listHeaderTop = landscape ? summaryTop : detailsTop + DETAILS_BUTTON_HEIGHT + metrics.verticalSpacing;
   const auto& books = READING_STATS.getBooks();
-  const int totalPages = std::max(1, static_cast<int>((books.size() + BOOKS_PER_PAGE - 1) / BOOKS_PER_PAGE));
-  const int currentPage = books.empty() || selectedIndex == 0 ? 1 : ((selectedIndex - 1) / BOOKS_PER_PAGE) + 1;
+  const int totalPages = std::max(1, static_cast<int>((books.size() + booksPerPage - 1) / booksPerPage));
+  const int currentPage = books.empty() || selectedIndex == 0 ? 1 : ((selectedIndex - 1) / booksPerPage) + 1;
   const std::string bookCountLabel = std::to_string(currentPage) + "/" + std::to_string(totalPages);
   const std::string startedBooksLabel =
       std::string(tr(STR_STARTED_BOOKS)) + " (" + std::to_string(READING_STATS.getBooksStartedCount()) + ")";
-  GUI.drawSubHeader(renderer, Rect{0, listHeaderTop, pageWidth, LIST_HEADER_HEIGHT}, startedBooksLabel.c_str(),
-                    bookCountLabel.c_str());
+  const Rect listHeaderRect = landscape ? Rect{listX, listHeaderTop, listWidth, LIST_HEADER_HEIGHT}
+                                        : Rect{0, listHeaderTop, pageWidth, LIST_HEADER_HEIGHT};
+  GUI.drawSubHeader(renderer, listHeaderRect, startedBooksLabel.c_str(), bookCountLabel.c_str());
 
   const int contentTop = listHeaderTop + LIST_HEADER_HEIGHT + LIST_HEADER_BOTTOM_GAP;
 
   if (books.empty()) {
-    renderer.drawText(UI_10_FONT_ID, sidePadding, contentTop + 20, tr(STR_NO_READING_STATS));
+    renderer.drawText(UI_10_FONT_ID, listX, contentTop + 20, tr(STR_NO_READING_STATS));
   } else {
     const int selectedBookIndex = std::max(0, selectedIndex - 1);
-    const int pageStartIndex = (selectedBookIndex / BOOKS_PER_PAGE) * BOOKS_PER_PAGE;
-    const int pageEndIndex = std::min(static_cast<int>(books.size()), pageStartIndex + BOOKS_PER_PAGE);
+    const int pageStartIndex = (selectedBookIndex / booksPerPage) * booksPerPage;
+    const int pageEndIndex = std::min(static_cast<int>(books.size()), pageStartIndex + booksPerPage);
     for (int index = pageStartIndex; index < pageEndIndex; ++index) {
       const int rowIndex = index - pageStartIndex;
       const int rowY = contentTop + rowIndex * (BOOK_ROW_HEIGHT + BOOK_ROW_GAP);
-      drawBookRow(renderer, Rect{sidePadding, rowY, pageWidth - sidePadding * 2, BOOK_ROW_HEIGHT}, books[index],
+      drawBookRow(renderer, Rect{listX, rowY, listWidth, BOOK_ROW_HEIGHT}, books[index],
                   selectedIndex == index + 1);
     }
   }
