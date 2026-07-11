@@ -44,6 +44,7 @@ void drawMiniProgressBar(GfxRenderer& renderer, const Rect& rect, const uint8_t 
 void LyraCustomTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std::vector<RecentBook>& recentBooks,
                                           const int selectorIndex, bool& coverRendered, bool& coverBufferStored,
                                           bool& bufferRestored, std::function<bool()> storeCoverBuffer) const {
+  rect = insetRectForButtonHints(renderer, rect);
   const int tileWidth = (rect.width - 2 * LyraCustomMetrics::values.contentSidePadding) / 3;
   const int tileY = rect.y;
   const bool hasContinueReading = !recentBooks.empty();

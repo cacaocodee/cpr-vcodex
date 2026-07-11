@@ -316,7 +316,8 @@ void ReadingStatsExtendedActivity::render(RenderLock&&) {
   renderer.clearScreen();
 
   const auto& metrics = UITheme::getInstance().getMetrics();
-  const int pageWidth = renderer.getScreenWidth();
+  const Rect hintSafeArea = BaseTheme::contentAreaForButtonHints(renderer);
+  const int pageWidth = hintSafeArea.x + hintSafeArea.width;  // keeps a gap from "Beside buttons" hint tabs
   const int sidePadding = metrics.contentSidePadding;
   const int cardWidth = (pageWidth - sidePadding * 2 - SUMMARY_GAP) / 2;
   const int summaryTop = metrics.topPadding + metrics.headerHeight + metrics.verticalSpacing;

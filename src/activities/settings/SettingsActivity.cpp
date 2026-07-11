@@ -138,6 +138,8 @@ const std::vector<SettingInfo>& getDeviceControlsSettings() {
         SettingInfo::Enum(StrId::STR_SIDE_BTN_LAYOUT, &CrossPointSettings::sideButtonLayout,
                           {StrId::STR_PREV_NEXT, StrId::STR_NEXT_PREV}),
         SettingInfo::Toggle(StrId::STR_FRONT_BTN_FOLLOW_ORIENTATION, &CrossPointSettings::frontButtonFollowOrientation),
+        SettingInfo::Enum(StrId::STR_BUTTON_HINTS_POSITION, &CrossPointSettings::buttonHintsPosition,
+                          {StrId::STR_BOTTOM, StrId::STR_BESIDE_BUTTONS}),
         SettingInfo::Enum(StrId::STR_LONG_PRESS_BEHAVIOR, &CrossPointSettings::longPressButtonBehavior,
                           {StrId::STR_LONG_PRESS_BEHAVIOR_OFF, StrId::STR_LONG_PRESS_BEHAVIOR_SKIP,
                            StrId::STR_LONG_PRESS_BEHAVIOR_ORIENTATION}),
@@ -1102,7 +1104,8 @@ void SettingsActivity::render(RenderLock&&) {
                                     metrics.buttonHintsHeight + metrics.verticalSpacing * 2 + listBottomGap)};
   const auto& settings = *currentSettings;
   if (selectedCategoryIndex == 4) {
-    renderAppSettingsList(listRect);
+    // Custom-rendered list: apply the hint gutter that GUI.drawList would.
+    renderAppSettingsList(BaseTheme::insetRectForButtonHints(renderer, listRect));
   } else {
     GUI.drawList(
         renderer, listRect, settingsCount, selectedSettingIndex - 1,

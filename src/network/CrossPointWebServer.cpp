@@ -297,6 +297,7 @@ constexpr StrId OPT_BAR_THICKNESS[] = {StrId::STR_PROGRESS_BAR_THIN, StrId::STR_
                                        StrId::STR_PROGRESS_BAR_THICK};
 constexpr StrId OPT_XTC_STATUS_BAR[] = {StrId::STR_HIDE, StrId::STR_BOTTOM, StrId::STR_TOP};
 constexpr StrId OPT_STATUS_BAR_CLOCK[] = {StrId::STR_HIDE, StrId::STR_DIR_RIGHT, StrId::STR_DIR_LEFT};
+constexpr StrId OPT_BUTTON_HINTS_POSITION[] = {StrId::STR_BOTTOM, StrId::STR_BESIDE_BUTTONS};
 constexpr StrId OPT_CLOCK_FORMAT[] = {StrId::STR_CLOCK_FORMAT_24H, StrId::STR_CLOCK_FORMAT_12H};
 
 #define WEB_TOGGLE(name, member, key, category)                                                                       \
@@ -373,6 +374,8 @@ constexpr WebSettingDef WEB_SETTINGS[] = {
     WEB_ENUM(StrId::STR_IMAGES, imageRendering, OPT_IMAGES, "imageRendering", StrId::STR_CAT_READER),
 
     WEB_ENUM(StrId::STR_SIDE_BTN_LAYOUT, sideButtonLayout, OPT_SIDE_BUTTONS, "sideButtonLayout",
+             StrId::STR_CAT_CONTROLS),
+    WEB_ENUM(StrId::STR_BUTTON_HINTS_POSITION, buttonHintsPosition, OPT_BUTTON_HINTS_POSITION, "buttonHintsPosition",
              StrId::STR_CAT_CONTROLS),
     WEB_TOGGLE(StrId::STR_FRONT_BTN_FOLLOW_ORIENTATION, frontButtonFollowOrientation, "frontButtonFollowOrientation",
                StrId::STR_CAT_CONTROLS),

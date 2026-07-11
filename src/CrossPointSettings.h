@@ -173,6 +173,10 @@ class CrossPointSettings {
   };
   enum TILT_PAGE_TURN { TILT_OFF = 0, TILT_NORMAL = 1, TILT_INVERTED = 2, TILT_PAGE_TURN_COUNT };
 
+  // Where the front-button hint bar renders: along the logical screen bottom,
+  // or force-drawn beside the physical buttons (differs only in landscape).
+  enum BUTTON_HINTS_POSITION { HINTS_BOTTOM = 0, HINTS_PHYSICAL = 1, BUTTON_HINTS_POSITION_COUNT };
+
   // Hide battery percentage
   enum HIDE_BATTERY_PERCENTAGE { HIDE_NEVER = 0, HIDE_READER = 1, HIDE_ALWAYS = 2, HIDE_BATTERY_PERCENTAGE_COUNT };
 
@@ -288,6 +292,7 @@ class CrossPointSettings {
   uint8_t frontButtonLayout = BACK_CONFIRM_LEFT_RIGHT;
   uint8_t sideButtonLayout = PREV_NEXT;
   uint8_t frontButtonFollowOrientation = 0;
+  uint8_t buttonHintsPosition = HINTS_BOTTOM;
   // Front button remap (logical -> hardware)
   // Used by MappedInputManager to translate logical buttons into physical front buttons.
   uint8_t frontButtonBack = FRONT_HW_BACK;

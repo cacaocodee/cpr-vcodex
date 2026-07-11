@@ -180,4 +180,16 @@ class BaseTheme {
   static constexpr int batteryPercentSpacing = 4;
   static void drawBatteryOutline(const GfxRenderer& renderer, int x, int y, int battWidth, int rectHeight);
   static void drawBatteryLightningBolt(const GfxRenderer& renderer, int boltX, int boltY);
+
+  // Shrinks a full-width content rect away from the screen edge occupied by
+  // the "Beside buttons" hint tabs (landscape only), so content keeps a gap
+  // from the navbar instead of rendering underneath it. The theme draw
+  // helpers (drawList, drawButtonMenu, ...) apply it themselves; activities
+  // with custom rendering can call it on their content area.
+  static Rect insetRectForButtonHints(const GfxRenderer& renderer, Rect rect);
+
+  // Convenience for activities that lay out from getScreenWidth(): the whole
+  // screen with the hint gutter removed (x/width differ from 0/full only in
+  // landscape "Beside buttons" mode).
+  static Rect contentAreaForButtonHints(const GfxRenderer& renderer);
 };

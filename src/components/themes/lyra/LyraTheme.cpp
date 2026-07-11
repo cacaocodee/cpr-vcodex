@@ -338,6 +338,7 @@ void LyraTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
 }
 
 void LyraTheme::drawSubHeader(const GfxRenderer& renderer, Rect rect, const char* label, const char* rightLabel) const {
+  rect = insetRectForButtonHints(renderer, rect);
   int currentX = rect.x + LyraMetrics::values.contentSidePadding;
   int rightSpace = LyraMetrics::values.contentSidePadding;
   if (rightLabel) {
@@ -427,6 +428,7 @@ void LyraTheme::drawList(const GfxRenderer& renderer, Rect rect, int itemCount, 
                          const std::function<UIIcon(int index)>& rowIcon,
                          const std::function<std::string(int index)>& rowValue, bool highlightValue,
                          const std::function<bool(int index)>& rowCompleted) const {
+  rect = insetRectForButtonHints(renderer, rect);
   int rowHeight =
       (rowSubtitle != nullptr) ? LyraMetrics::values.listWithSubtitleRowHeight : LyraMetrics::values.listRowHeight;
   int pageItems = rect.height / rowHeight;
@@ -523,6 +525,17 @@ void LyraTheme::drawList(const GfxRenderer& renderer, Rect rect, int itemCount, 
 
 void LyraTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const char* btn2, const char* btn3,
                                 const char* btn4) const {
+  // "Beside buttons" mode force-draws the bar in portrait coordinates so it
+  // hugs the physical front-button edge whatever the UI orientation. In
+  // portrait both modes render identically, so only landscape switches.
+  const GfxRenderer::Orientation origOrientation = renderer.getOrientation();
+  const bool physicalMode =
+      SETTINGS.buttonHintsPosition == CrossPointSettings::BUTTON_HINTS_POSITION::HINTS_PHYSICAL &&
+      origOrientation != GfxRenderer::Orientation::Portrait;
+  if (physicalMode) {
+    renderer.setOrientation(GfxRenderer::Orientation::Portrait);
+  }
+
   const int pageHeight = renderer.getScreenHeight();
   const int pageWidth = renderer.getScreenWidth();
   constexpr int buttonWidth = 80;
@@ -534,9 +547,9 @@ void LyraTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const c
   constexpr int x4ButtonPositions[] = {58, 146, 254, 342};
   constexpr int x3ButtonPositions[] = {65, 157, 291, 383};
   const int* buttonPositions = gpio.deviceIsX3() ? x3ButtonPositions : x4ButtonPositions;
-  // Positions above are tuned for the portrait width; scale them so the hints
-  // stay along the logical bottom edge (which layouts already reserve) instead
-  // of being force-drawn in portrait over landscape content.
+  // Positions above are tuned for the portrait width; in bottom mode scale
+  // them so the hints span the logical bottom edge (which layouts already
+  // reserve). Physical mode draws in portrait, so the scale is 1.
   const int baseWidth = gpio.deviceIsX3() ? 528 : 480;
   const char* labels[] = {btn1, btn2, btn3, btn4};
 
@@ -557,6 +570,10 @@ void LyraTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const c
       renderer.drawRoundedRect(x, pageHeight - smallButtonHeight, buttonWidth, smallButtonHeight, 1, cornerRadius, true,
                                true, false, false, true);
     }
+  }
+
+  if (physicalMode) {
+    renderer.setOrientation(origOrientation);
   }
 }
 
@@ -612,6 +629,7 @@ void LyraTheme::drawSideButtonHints(const GfxRenderer& renderer, const char* top
 void LyraTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std::vector<RecentBook>& recentBooks,
                                     const int selectorIndex, bool& coverRendered, bool& coverBufferStored,
                                     bool& bufferRestored, std::function<bool()> storeCoverBuffer) const {
+  rect = insetRectForButtonHints(renderer, rect);
   const int tileWidth = rect.width - 2 * LyraMetrics::values.contentSidePadding;
   const int tileHeight = rect.height;
   const int tileY = rect.y;
@@ -746,6 +764,7 @@ void LyraTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount
                                const std::function<UIIcon(int index)>& rowIcon,
                                const std::function<std::string(int index)>& buttonSubtitle,
                                const std::function<bool(int index)>& showAccessory) const {
+  rect = insetRectForButtonHints(renderer, rect);
   const int availableHeight = std::max(0, rect.height);
   const int gap = LyraMetrics::values.menuSpacing;
   const int fullRowHeight = LyraMetrics::values.menuRowHeight;

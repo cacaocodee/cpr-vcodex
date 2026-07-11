@@ -460,7 +460,8 @@ void ReadingProfileActivity::rebuildProfileCache() {
   profileSummary = buildReadingProfileSummary();
   const auto sections = getProfileSections(profileSummary);
   const auto& metrics = UITheme::getInstance().getMetrics();
-  const int pageWidth = renderer.getScreenWidth();
+  const Rect hintSafeArea = BaseTheme::contentAreaForButtonHints(renderer);
+  const int pageWidth = hintSafeArea.x + hintSafeArea.width;  // keeps a gap from "Beside buttons" hint tabs
   const int sidePadding = metrics.contentSidePadding;
   const int textWidth = pageWidth - sidePadding * 2;
   const int contentTop = metrics.topPadding + metrics.headerHeight + CONTENT_TOP_GAP;
@@ -570,7 +571,8 @@ void ReadingProfileActivity::render(RenderLock&&) {
 
   const auto sections = getProfileSections(profileSummary);
   const auto& metrics = UITheme::getInstance().getMetrics();
-  const int pageWidth = renderer.getScreenWidth();
+  const Rect hintSafeArea = BaseTheme::contentAreaForButtonHints(renderer);
+  const int pageWidth = hintSafeArea.x + hintSafeArea.width;  // keeps a gap from "Beside buttons" hint tabs
   const int pageHeight = renderer.getScreenHeight();
   const int sidePadding = metrics.contentSidePadding;
   const int sectionWidth = (pageWidth - sidePadding * 2 - SECTION_CARD_GAP) / 2;

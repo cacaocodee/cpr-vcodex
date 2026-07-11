@@ -158,7 +158,8 @@ void AchievementsActivity::render(RenderLock&&) {
   renderer.clearScreen();
 
   const auto& metrics = UITheme::getInstance().getMetrics();
-  const int pageWidth = renderer.getScreenWidth();
+  const Rect hintSafeArea = BaseTheme::contentAreaForButtonHints(renderer);
+  const int pageWidth = hintSafeArea.x + hintSafeArea.width;  // keeps a gap from "Beside buttons" hint tabs
   const int pageHeight = renderer.getScreenHeight();
   const int tabY = metrics.topPadding + metrics.headerHeight;
   const int contentTop = tabY + metrics.tabBarHeight + metrics.verticalSpacing;

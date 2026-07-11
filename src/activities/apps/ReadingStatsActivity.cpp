@@ -33,7 +33,8 @@ constexpr int LANDSCAPE_PANE_GAP = 16;
 // tower is taller than a landscape screen, so landscape moves the book list
 // into a right-hand pane and fits as many rows as the height allows.
 int getBooksPerPage(const GfxRenderer& renderer) {
-  const int pageWidth = renderer.getScreenWidth();
+  const Rect hintSafeArea = BaseTheme::contentAreaForButtonHints(renderer);
+  const int pageWidth = hintSafeArea.x + hintSafeArea.width;  // keeps a gap from "Beside buttons" hint tabs
   const int pageHeight = renderer.getScreenHeight();
   if (pageWidth <= pageHeight) {
     return BOOKS_PER_PAGE;
@@ -296,7 +297,8 @@ void ReadingStatsActivity::render(RenderLock&&) {
   renderer.clearScreen();
 
   const auto& metrics = UITheme::getInstance().getMetrics();
-  const int pageWidth = renderer.getScreenWidth();
+  const Rect hintSafeArea = BaseTheme::contentAreaForButtonHints(renderer);
+  const int pageWidth = hintSafeArea.x + hintSafeArea.width;  // keeps a gap from "Beside buttons" hint tabs
   const int pageHeight = renderer.getScreenHeight();
   const bool landscape = pageWidth > pageHeight;
   const int sidePadding = metrics.contentSidePadding;

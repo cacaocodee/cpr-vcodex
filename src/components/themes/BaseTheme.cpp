@@ -307,12 +307,38 @@ void BaseTheme::drawSideButtonHints(const GfxRenderer& renderer, const char* top
   }
 }
 
+Rect BaseTheme::contentAreaForButtonHints(const GfxRenderer& renderer) {
+  return insetRectForButtonHints(renderer, Rect{0, 0, renderer.getScreenWidth(), renderer.getScreenHeight()});
+}
+
+Rect BaseTheme::insetRectForButtonHints(const GfxRenderer& renderer, Rect rect) {
+  if (SETTINGS.buttonHintsPosition != CrossPointSettings::BUTTON_HINTS_POSITION::HINTS_PHYSICAL) {
+    return rect;
+  }
+  // Physical front buttons sit at the portrait bottom edge, which appears at
+  // the logical left (landscape CW) or right (landscape CCW) of the screen.
+  const int gutter = UITheme::getInstance().getMetrics().buttonHintsHeight + 4;
+  switch (renderer.getOrientation()) {
+    case GfxRenderer::Orientation::LandscapeClockwise:
+      rect.x += gutter;
+      rect.width = std::max(0, rect.width - gutter);
+      break;
+    case GfxRenderer::Orientation::LandscapeCounterClockwise:
+      rect.width = std::max(0, rect.width - gutter);
+      break;
+    default:
+      break;
+  }
+  return rect;
+}
+
 void BaseTheme::drawList(const GfxRenderer& renderer, Rect rect, int itemCount, int selectedIndex,
                          const std::function<std::string(int index)>& rowTitle,
                          const std::function<std::string(int index)>& rowSubtitle,
                          const std::function<UIIcon(int index)>& rowIcon,
                          const std::function<std::string(int index)>& rowValue, bool highlightValue,
                          const std::function<bool(int index)>& rowCompleted) const {
+  rect = insetRectForButtonHints(renderer, rect);
   (void)rowIcon;
   (void)highlightValue;
   (void)rowCompleted;
@@ -415,6 +441,7 @@ void BaseTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
 }
 
 void BaseTheme::drawSubHeader(const GfxRenderer& renderer, Rect rect, const char* label, const char* rightLabel) const {
+  rect = insetRectForButtonHints(renderer, rect);
   constexpr int maxListValueWidth = 200;
 
   int currentX = rect.x + BaseMetrics::values.contentSidePadding;
@@ -499,6 +526,7 @@ void BaseTheme::drawTabBar(const GfxRenderer& renderer, const Rect rect, const s
 void BaseTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std::vector<RecentBook>& recentBooks,
                                     const int selectorIndex, bool& coverRendered, bool& coverBufferStored,
                                     bool& bufferRestored, std::function<bool()> storeCoverBuffer) const {
+  rect = insetRectForButtonHints(renderer, rect);
   const bool hasContinueReading = !recentBooks.empty();
   const bool bookSelected = hasContinueReading && selectorIndex == 0;
 
@@ -729,6 +757,7 @@ void BaseTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount
                                const std::function<UIIcon(int index)>& rowIcon,
                                const std::function<std::string(int index)>& buttonSubtitle,
                                const std::function<bool(int index)>& showAccessory) const {
+  rect = insetRectForButtonHints(renderer, rect);
   const int availableHeight = std::max(0, rect.height);
   const int gap = BaseMetrics::values.menuSpacing;
   const int rowHeight = buttonCount > 0 ? std::min(BaseMetrics::values.menuRowHeight,
