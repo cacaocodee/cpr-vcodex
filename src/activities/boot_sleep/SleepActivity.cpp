@@ -782,8 +782,8 @@ void SleepActivity::renderDefaultSleepScreen() const {
   const auto pageWidth = renderer.getScreenWidth();
   const auto pageHeight = renderer.getScreenHeight();
 
-  constexpr int logoWidth = 174;
-  constexpr int logoHeight = 24;
+  constexpr int logoWidth = LOGO_WIDTH;
+  constexpr int logoHeight = LOGO_HEIGHT;
   constexpr int logoTextGap = 10;
   constexpr int subtitleGap = 25;
   const int logoX = (pageWidth - logoWidth) / 2;
