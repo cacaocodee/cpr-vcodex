@@ -7,6 +7,7 @@
 #include <HalGPIO.h>
 #include <HalPowerManager.h>
 #include <HalStorage.h>
+#include <HalClock.h>
 #include <HalSystem.h>
 #include <HalTiltSensor.h>
 #include <I18n.h>
@@ -358,6 +359,7 @@ void setup() {
   gpio.begin();
   powerManager.begin();
   halTiltSensor.begin();
+  halClock.begin();  // X3 DS3231 RTC; needs I2C from powerManager.begin()
 
   // Disable Arduino core's NVS auto-persist of Wi-Fi credentials. WifiSelectionActivity
   // always scans first and uses WifiCredentialStore (SD card JSON) as the source of

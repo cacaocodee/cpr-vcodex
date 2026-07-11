@@ -427,6 +427,10 @@ bool loadSettingsDirect(CrossPointSettings& s, const JsonDocument& doc, bool* ne
   loadEnum("statusBarTitle", s.statusBarTitle, CrossPointSettings::STATUS_BAR_TITLE_COUNT);
   loadToggle("statusBarBattery", s.statusBarBattery);
   loadEnum("xtcStatusBarMode", s.xtcStatusBarMode, CrossPointSettings::XTC_STATUS_BAR_MODE_COUNT);
+  loadEnum("statusBarClock", s.statusBarClock, static_cast<uint8_t>(3));
+  s.clockUtcOffsetQ = clamp(doc["clockUtcOffsetQ"] | s.clockUtcOffsetQ, static_cast<uint8_t>(105), s.clockUtcOffsetQ);
+  loadToggle("clockFormat", s.clockFormat);
+  loadToggle("clockHasBeenSynced", s.clockHasBeenSynced);
 
   using S = CrossPointSettings;
   s.frontButtonBack =
@@ -802,6 +806,10 @@ bool JsonSettingsIO::saveSettings(const CrossPointSettings& s, const char* path)
   doc["statusBarTitle"] = s.statusBarTitle;
   doc["statusBarBattery"] = s.statusBarBattery;
   doc["xtcStatusBarMode"] = s.xtcStatusBarMode;
+  doc["statusBarClock"] = s.statusBarClock;
+  doc["clockUtcOffsetQ"] = s.clockUtcOffsetQ;
+  doc["clockFormat"] = s.clockFormat;
+  doc["clockHasBeenSynced"] = s.clockHasBeenSynced;
 
   // Front button remap - managed by RemapFrontButtons sub-activity, not in SettingsList.
   doc["frontButtonBack"] = s.frontButtonBack;

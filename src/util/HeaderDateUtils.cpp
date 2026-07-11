@@ -1,6 +1,7 @@
 #include "HeaderDateUtils.h"
 
 #include <GfxRenderer.h>
+#include <HalClock.h>
 #include <HalPowerManager.h>
 #include <I18n.h>
 
@@ -71,7 +72,20 @@ std::string HeaderDateUtils::getDisplayDateText() {
   }
 
   const auto info = getDisplayDateInfo();
-  return formatHeaderDateText(info.timestamp, info.usedFallback);
+  std::string text = formatHeaderDateText(info.timestamp, info.usedFallback);
+
+  // Append the DS3231 time-of-day when the clock feature is enabled (X3 only).
+  if (SETTINGS.statusBarClock != CrossPointSettings::STATUS_BAR_CLOCK_MODE::STATUS_BAR_CLOCK_HIDE &&
+      halClock.isAvailable()) {
+    char timeBuf[9];
+    if (halClock.formatTime(timeBuf, sizeof(timeBuf), SETTINGS.clockUtcOffsetQ, SETTINGS.clockFormat == 1)) {
+      if (!text.empty()) {
+        text += "  ";
+      }
+      text += timeBuf;
+    }
+  }
+  return text;
 }
 
 std::string HeaderDateUtils::getSyncDayReminderText() {

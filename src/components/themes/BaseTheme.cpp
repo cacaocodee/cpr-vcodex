@@ -1,6 +1,7 @@
 #include "BaseTheme.h"
 
 #include <GfxRenderer.h>
+#include <HalClock.h>
 #include <HalPowerManager.h>
 #include <HalStorage.h>
 #include <Logging.h>
@@ -877,6 +878,29 @@ void BaseTheme::drawStatusBar(GfxRenderer& renderer, const float bookProgress, c
                              metrics.batteryHeight},
                         showBatteryPercentage);
   }
+  const int batterySize = SETTINGS.statusBarBattery ? (showBatteryPercentage ? 50 : 20) : 0;
+
+  // Draw Clock (X3 only — DS3231 RTC)
+  int clockTextWidth = 0;
+  bool clockOnLeft = false;
+  if (SETTINGS.statusBarClock != CrossPointSettings::STATUS_BAR_CLOCK_MODE::STATUS_BAR_CLOCK_HIDE &&
+      halClock.isAvailable()) {
+    char timeBuf[9];
+    if (halClock.formatTime(timeBuf, sizeof(timeBuf), SETTINGS.clockUtcOffsetQ, SETTINGS.clockFormat == 1)) {
+      clockTextWidth = renderer.getTextWidth(SMALL_FONT_ID, timeBuf);
+      clockOnLeft = SETTINGS.statusBarClock == CrossPointSettings::STATUS_BAR_CLOCK_MODE::STATUS_BAR_CLOCK_LEFT;
+      int clockX;
+      if (clockOnLeft) {
+        // Right of the battery block (or at the left margin when battery is hidden)
+        clockX = metrics.statusBarHorizontalMargin + orientedMarginLeft + batterySize + (batterySize > 0 ? 10 : 0);
+      } else {
+        // Left of the progress text (with a small gap)
+        clockX = renderer.getScreenWidth() - metrics.statusBarHorizontalMargin - orientedMarginRight -
+                 progressTextWidth - (progressTextWidth > 0 ? 10 : 0) - clockTextWidth;
+      }
+      renderer.drawText(SMALL_FONT_ID, clockX, textY, timeBuf);
+    }
+  }
 
   // Draw Title
   if (!title.empty()) {
@@ -886,9 +910,9 @@ void BaseTheme::drawStatusBar(GfxRenderer& renderer, const float bookProgress, c
     const int rendererableScreenWidth =
         renderer.getScreenWidth() - (metrics.statusBarHorizontalMargin * 2) - orientedMarginLeft - orientedMarginRight;
 
-    const int batterySize = SETTINGS.statusBarBattery ? (showBatteryPercentage ? 50 : 20) : 0;
-    const int titleMarginLeft = batterySize + 30;
-    const int titleMarginRight = progressTextWidth + 30;
+    const int clockReserve = clockTextWidth > 0 ? (clockTextWidth + 10) : 0;
+    const int titleMarginLeft = batterySize + (clockOnLeft ? clockReserve : 0) + 30;
+    const int titleMarginRight = progressTextWidth + (clockOnLeft ? 0 : clockReserve) + 30;
 
     // Attempt to center title on the screen, but if title is too wide then later we will center it within the
     // available space.

@@ -3,6 +3,7 @@
 #include "CrossPointSettings.h"
 
 #include <Arduino.h>
+#include <HalClock.h>
 #include <esp_sntp.h>
 
 #include <algorithm>
@@ -108,6 +109,14 @@ bool TimeUtils::syncTimeWithNtp(const uint32_t timeoutMs) {
 
     if ((syncCompleted || clockJumpedToValid) && currentClockValid) {
       syncedThisBoot = true;
+      // Keep the DS3231 RTC fresh after any successful NTP sync (X3 only)
+      // so the status-bar clock survives reboots and power-off.
+      if (halClock.isAvailable() && halClock.syncFromSystemTime()) {
+        if (!SETTINGS.clockHasBeenSynced) {
+          SETTINGS.clockHasBeenSynced = 1;
+          SETTINGS.saveToFile();
+        }
+      }
       return true;
     }
     vTaskDelay(100 / portTICK_PERIOD_MS);
