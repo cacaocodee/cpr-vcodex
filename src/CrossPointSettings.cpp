@@ -100,6 +100,28 @@ bool CrossPointSettings::saveToFile() const {
   return JsonSettingsIO::saveSettings(*this, SETTINGS_FILE_JSON);
 }
 
+void CrossPointSettings::applyBleMemoryOverrides() {
+  if (bleMemoryOverrideActive) {
+    return;
+  }
+  bleSavedImageRendering = imageRendering;
+  bleSavedTextAntiAliasing = textAntiAliasing;
+  imageRendering = IMAGES_SUPPRESS;
+  textAntiAliasing = 0;
+  bleMemoryOverrideActive = 1;
+  LOG_DBG("CPS", "BLE memory overrides applied (images/AA off)");
+}
+
+void CrossPointSettings::restoreBleMemoryOverrides() {
+  if (!bleMemoryOverrideActive) {
+    return;
+  }
+  imageRendering = bleSavedImageRendering;
+  textAntiAliasing = bleSavedTextAntiAliasing;
+  bleMemoryOverrideActive = 0;
+  LOG_DBG("CPS", "BLE memory overrides restored (images=%u AA=%u)", imageRendering, textAntiAliasing);
+}
+
 bool CrossPointSettings::loadFromFile() {
   const std::string tempPath = std::string(SETTINGS_FILE_JSON) + ".tmp";
   if (!Storage.exists(SETTINGS_FILE_JSON) && Storage.exists(tempPath.c_str())) {

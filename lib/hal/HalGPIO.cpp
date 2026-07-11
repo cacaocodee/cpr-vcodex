@@ -203,6 +203,13 @@ void HalGPIO::begin() {
 }
 
 void HalGPIO::update() {
+  // Save previous virtual button state for release detection, then promote
+  // queued virtual buttons to the current frame and clear the queue. This
+  // gives activities exactly one frame to see wasPressed() before auto-release.
+  previousVirtualButtonEvents = virtualButtonEvents;
+  virtualButtonEvents = virtualButtonQueue;
+  virtualButtonQueue = 0;
+
   inputMgr.update();
   const bool connected = isUsbConnected();
   usbStateChanged = (connected != lastUsbConnected);
@@ -213,13 +220,27 @@ bool HalGPIO::wasUsbStateChanged() const { return usbStateChanged; }
 
 bool HalGPIO::isPressed(uint8_t buttonIndex) const { return inputMgr.isPressed(buttonIndex); }
 
-bool HalGPIO::wasPressed(uint8_t buttonIndex) const { return inputMgr.wasPressed(buttonIndex); }
+bool HalGPIO::wasPressed(uint8_t buttonIndex) const {
+  return inputMgr.wasPressed(buttonIndex) || (virtualButtonEvents & (1 << buttonIndex));
+}
 
-bool HalGPIO::wasAnyPressed() const { return inputMgr.wasAnyPressed(); }
+bool HalGPIO::wasAnyPressed() const { return inputMgr.wasAnyPressed() || (virtualButtonEvents > 0); }
 
-bool HalGPIO::wasReleased(uint8_t buttonIndex) const { return inputMgr.wasReleased(buttonIndex); }
+bool HalGPIO::wasReleased(uint8_t buttonIndex) const {
+  // Virtual release = was pressed last frame but not this frame
+  const uint8_t virtualRelease = previousVirtualButtonEvents & ~virtualButtonEvents;
+  return inputMgr.wasReleased(buttonIndex) || (virtualRelease & (1 << buttonIndex));
+}
 
-bool HalGPIO::wasAnyReleased() const { return inputMgr.wasAnyReleased(); }
+bool HalGPIO::wasAnyReleased() const {
+  const uint8_t virtualRelease = previousVirtualButtonEvents & ~virtualButtonEvents;
+  return inputMgr.wasAnyReleased() || (virtualRelease > 0);
+}
+
+void HalGPIO::injectButtonPress(uint8_t buttonIndex) {
+  // Queue the button for next update() cycle — one-shot pulse
+  virtualButtonQueue |= (1 << buttonIndex);
+}
 
 unsigned long HalGPIO::getHeldTime() const { return inputMgr.getHeldTime(); }
 

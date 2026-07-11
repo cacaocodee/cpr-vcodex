@@ -19,6 +19,9 @@
 #include "CrossPointSettings.h"
 #include "FontDownloadActivity.h"
 #include "FontSelectionActivity.h"
+#ifdef ENABLE_BLE
+#include "BluetoothSettingsActivity.h"
+#endif
 #include "FeatureFlags.h"
 #include "KOReaderSettingsActivity.h"
 #include "LanguageSelectActivity.h"
@@ -162,6 +165,9 @@ const std::vector<SettingInfo>& getDeviceSystemSettings() {
                         {StrId::STR_MIN_1, StrId::STR_MIN_5, StrId::STR_MIN_10, StrId::STR_MIN_15, StrId::STR_MIN_30}),
       SettingInfo::Toggle(StrId::STR_SHOW_HIDDEN_FILES, &CrossPointSettings::showHiddenFiles),
       SettingInfo::Action(StrId::STR_WIFI_NETWORKS, SettingAction::Network),
+#ifdef ENABLE_BLE
+      SettingInfo::Action(StrId::STR_BLE_REMOTE, SettingAction::BluetoothRemote),
+#endif
       SettingInfo::Action(StrId::STR_KOREADER_SYNC, SettingAction::KOReaderSync),
 #if CPR_ENABLE_OPDS
       SettingInfo::Enum(StrId::STR_OPDS_FILENAME_FORMAT, &CrossPointSettings::opdsFilenameFormat,
@@ -186,6 +192,9 @@ const std::vector<SettingInfo>& getDeviceOnlyControlSettings() {
 const std::vector<SettingInfo>& getDeviceOnlySystemSettings() {
   static const std::vector<SettingInfo> settings = {
       SettingInfo::Action(StrId::STR_WIFI_NETWORKS, SettingAction::Network),
+#ifdef ENABLE_BLE
+      SettingInfo::Action(StrId::STR_BLE_REMOTE, SettingAction::BluetoothRemote),
+#endif
       SettingInfo::Action(StrId::STR_KOREADER_SYNC, SettingAction::KOReaderSync),
 #if CPR_ENABLE_OPDS
       SettingInfo::Action(StrId::STR_OPDS_SERVERS, SettingAction::OPDSBrowser),
@@ -661,6 +670,11 @@ void SettingsActivity::toggleCurrentSetting() {
 #if CPR_ENABLE_OPDS
       case SettingAction::OPDSBrowser:
         startActivityForResult(std::make_unique<OpdsServerListActivity>(renderer, mappedInput), resultHandler);
+        break;
+#endif
+#ifdef ENABLE_BLE
+      case SettingAction::BluetoothRemote:
+        startActivityForResult(std::make_unique<BluetoothSettingsActivity>(renderer, mappedInput), resultHandler);
         break;
 #endif
       case SettingAction::Network:

@@ -10,6 +10,9 @@
 #include <HalClock.h>
 #include <HalSystem.h>
 #include <HalTiltSensor.h>
+#ifdef ENABLE_BLE
+#include <BluetoothHIDManager.h>
+#endif
 #include <I18n.h>
 #include <Logging.h>
 #include <SPI.h>
@@ -284,6 +287,16 @@ void enterDeepSleep() {
   APP_STATE.lastSleepFromReader = activityManager.isReaderActivity();
   APP_STATE.saveToFile();
 
+#ifdef ENABLE_BLE
+  {
+    auto& btMgr = BluetoothHIDManager::getInstance();
+    if (btMgr.isEnabled()) {
+      LOG_DBG("SLP", "Disabling Bluetooth before deep sleep");
+      btMgr.disable();
+    }
+  }
+#endif
+
   deepSleepInProgress = true;
   activityManager.goToSleep();
 
@@ -430,6 +443,39 @@ void setup() {
   ReaderUtils::applyUiOrientation(renderer);
   ButtonNavigator::setMappedInputManager(mappedInputManager);
 
+#ifdef ENABLE_BLE
+  // NOTE: no forced heap-saving setting overrides here. imageRendering and
+  // embeddedStyle are part of the section-cache header, so overriding them
+  // invalidates every cached chapter (forcing a re-index that fails under BLE
+  // memory pressure), and the values leak into the settings file on the next
+  // saveToFile(). The reader's MemoryBudget paths degrade gracefully instead.
+  {
+    auto& btMgr = BluetoothHIDManager::getInstance();
+    btMgr.setButtonInjector([](uint8_t btn) { gpio.injectButtonPress(btn); });
+    btMgr.setReaderContextCallback([]() -> bool { return activityManager.isReaderActivity(); });
+    if (strlen(SETTINGS.bleBondedDeviceAddr) > 0) {
+      btMgr.setBondedDevice(std::string(SETTINGS.bleBondedDeviceAddr), std::string(SETTINGS.bleBondedDeviceName),
+                            SETTINGS.bleBondedDeviceAddrType);
+    }
+    // Bluetooth never auto-enables after a restart or wake — the user turns
+    // it on manually in BT settings. If the device slept/restarted while BT
+    // was on, clear that state and undo its memory overrides now.
+    if (SETTINGS.bleEnabled || SETTINGS.bleMemoryOverrideActive) {
+      SETTINGS.bleEnabled = 0;
+      SETTINGS.restoreBleMemoryOverrides();
+      SETTINGS.saveToFile();
+    }
+    LOG_INF("MAIN", "Bluetooth HID registered (enable via BT settings)");
+  }
+#else
+  // Non-BLE build: if the user flashed away from the BLE build while
+  // Bluetooth was on, restore their Images/anti-aliasing settings.
+  if (SETTINGS.bleMemoryOverrideActive) {
+    SETTINGS.restoreBleMemoryOverrides();
+    SETTINGS.saveToFile();
+  }
+#endif
+
   const auto wakeupReason = gpio.getWakeupReason();
   switch (wakeupReason) {
     case HalGPIO::WakeupReason::PowerButton:
@@ -467,7 +513,8 @@ void setup() {
   }
 
   const bool skipStateLoad = manualSafeBoot || BootRecovery::shouldSkipState();
-  const bool skipReadingStatsLoad = manualSafeBoot || BootRecovery::shouldSkipReadingStats();
+  const bool skipReadingStatsLoad =
+      manualSafeBoot || BootRecovery::shouldSkipReadingStats() || !CPR_ENABLE_READING_STATS;
   const bool skipRecentBooksLoad = manualSafeBoot || BootRecovery::shouldSkipRecentBooks();
   const bool skipFavoritesLoad = manualSafeBoot || BootRecovery::shouldSkipFavorites();
   const bool skipFlashcardsLoad = manualSafeBoot || BootRecovery::shouldSkipFlashcards();
@@ -615,6 +662,21 @@ void loop() {
     lastActivityTime = millis();         // Reset inactivity timer
     powerManager.setPowerSaving(false);  // Restore normal CPU frequency on user activity
   }
+
+#ifdef ENABLE_BLE
+  {
+    auto& btMgr = BluetoothHIDManager::getInstance();
+    if (btMgr.isEnabled()) {
+      btMgr.updateActivity();
+      btMgr.checkAutoReconnect(gpio.wasAnyPressed());
+      // Keep the device awake while the remote is in active use — deep sleep
+      // drops the BLE link and reconnecting costs a blocking connect attempt.
+      if (btMgr.hasRecentActivity()) {
+        lastActivityTime = millis();
+      }
+    }
+  }
+#endif
 
   static bool screenshotButtonsReleased = true;
   if (gpio.isPressed(HalGPIO::BTN_POWER) && gpio.isPressed(HalGPIO::BTN_DOWN)) {

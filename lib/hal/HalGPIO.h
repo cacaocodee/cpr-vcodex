@@ -43,6 +43,11 @@ class HalGPIO {
   InputManager inputMgr;
 #endif
 
+  // Virtual button injection (one-shot queue for BLE remotes)
+  uint8_t virtualButtonEvents = 0;
+  uint8_t virtualButtonQueue = 0;
+  uint8_t previousVirtualButtonEvents = 0;
+
   bool lastUsbConnected = false;
   bool usbStateChanged = false;
 
@@ -71,6 +76,10 @@ class HalGPIO {
   bool wasAnyReleased() const;
   unsigned long getHeldTime() const;
   unsigned long getPowerButtonHeldTime() const;
+
+  // Queue a one-shot virtual button press (consumed on the next update()
+  // cycle); used by the BLE HID remote to emit physical-button events.
+  void injectButtonPress(uint8_t buttonIndex);
 
   // Setup wake up GPIO and enter deep sleep
   void startDeepSleep();

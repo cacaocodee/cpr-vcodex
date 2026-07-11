@@ -293,6 +293,23 @@ class CrossPointSettings {
   uint8_t sideButtonLayout = PREV_NEXT;
   uint8_t frontButtonFollowOrientation = 0;
   uint8_t buttonHintsPosition = HINTS_BOTTOM;
+#ifdef ENABLE_BLE
+  // Bluetooth HID remote settings
+  uint8_t bleEnabled = 0;               // 1 = BT on (runtime only; cleared at boot — never auto-enables)
+  char bleBondedDeviceAddr[18] = "";    // MAC address "xx:xx:xx:xx:xx:xx"
+  char bleBondedDeviceName[32] = "";    // Display name of bonded device
+  uint8_t bleBondedDeviceAddrType = 0;  // BLE address type (0=public, 1=random)
+#endif
+  // BLE memory-saver overrides: while Bluetooth is on, Images and text
+  // anti-aliasing are forced off to free heap for NimBLE; the user's own
+  // values are stashed here and restored when Bluetooth is turned off.
+  // Unconditional (not #ifdef ENABLE_BLE) so a non-BLE build can undo the
+  // override if the user flashes back while Bluetooth was still on.
+  uint8_t bleMemoryOverrideActive = 0;
+  uint8_t bleSavedImageRendering = IMAGES_DISPLAY;
+  uint8_t bleSavedTextAntiAliasing = 1;
+  void applyBleMemoryOverrides();    // no-op when already active
+  void restoreBleMemoryOverrides();  // no-op when not active
   // Front button remap (logical -> hardware)
   // Used by MappedInputManager to translate logical buttons into physical front buttons.
   uint8_t frontButtonBack = FRONT_HW_BACK;

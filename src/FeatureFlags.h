@@ -24,3 +24,13 @@
 #ifndef CPR_ENABLE_EXTRA_FONTS
 #define CPR_ENABLE_EXTRA_FONTS 1
 #endif
+
+// 0 = keep the reading-stats store unloaded to free heap (~5-25KB depending
+// on library size and history). Code stays compiled and the stats UI remains
+// reachable but shows an empty store; persistence is suspended via the
+// recovery-mode path, so the stats JSON on the SD card is never overwritten
+// and reappears intact on a build with this flag on. The BLE build no longer
+// sets this — it unloads/reloads the store dynamically with the BT state.
+#ifndef CPR_ENABLE_READING_STATS
+#define CPR_ENABLE_READING_STATS 1
+#endif

@@ -383,6 +383,25 @@ bool loadSettingsDirect(CrossPointSettings& s, const JsonDocument& doc, bool* ne
   loadToggle("frontButtonFollowOrientation", s.frontButtonFollowOrientation);
   loadToggle("uiFollowOrientation", s.uiFollowOrientation);
   loadEnum("buttonHintsPosition", s.buttonHintsPosition, CrossPointSettings::BUTTON_HINTS_POSITION_COUNT);
+#ifdef ENABLE_BLE
+  loadToggle("bleEnabled", s.bleEnabled);
+  {
+    const char* addr = doc["bleBondedDeviceAddr"] | "";
+    strncpy(s.bleBondedDeviceAddr, addr, sizeof(s.bleBondedDeviceAddr) - 1);
+    s.bleBondedDeviceAddr[sizeof(s.bleBondedDeviceAddr) - 1] = '\0';
+  }
+  {
+    const char* name = doc["bleBondedDeviceName"] | "";
+    strncpy(s.bleBondedDeviceName, name, sizeof(s.bleBondedDeviceName) - 1);
+    s.bleBondedDeviceName[sizeof(s.bleBondedDeviceName) - 1] = '\0';
+  }
+  s.bleBondedDeviceAddrType = doc["bleBondedDeviceAddrType"] | (uint8_t)0;
+#endif
+  // BLE memory-saver override state — parsed unconditionally so a non-BLE
+  // build can restore the user's Images/AA values at boot (see setup()).
+  loadToggle("bleMemoryOverrideActive", s.bleMemoryOverrideActive);
+  loadEnum("bleSavedImageRendering", s.bleSavedImageRendering, CrossPointSettings::IMAGE_RENDERING_COUNT);
+  loadToggle("bleSavedTextAntiAliasing", s.bleSavedTextAntiAliasing);
   if (!doc["longPressButtonBehavior"].isNull()) {
     loadEnum("longPressButtonBehavior", s.longPressButtonBehavior,
              CrossPointSettings::LONG_PRESS_BUTTON_BEHAVIOR_COUNT);
@@ -772,6 +791,15 @@ bool JsonSettingsIO::saveSettings(const CrossPointSettings& s, const char* path)
   doc["frontButtonFollowOrientation"] = s.frontButtonFollowOrientation;
   doc["uiFollowOrientation"] = s.uiFollowOrientation;
   doc["buttonHintsPosition"] = s.buttonHintsPosition;
+#ifdef ENABLE_BLE
+  doc["bleEnabled"] = s.bleEnabled;
+  doc["bleBondedDeviceAddr"] = s.bleBondedDeviceAddr;
+  doc["bleBondedDeviceName"] = s.bleBondedDeviceName;
+  doc["bleBondedDeviceAddrType"] = s.bleBondedDeviceAddrType;
+#endif
+  doc["bleMemoryOverrideActive"] = s.bleMemoryOverrideActive;
+  doc["bleSavedImageRendering"] = s.bleSavedImageRendering;
+  doc["bleSavedTextAntiAliasing"] = s.bleSavedTextAntiAliasing;
   doc["longPressButtonBehavior"] = s.longPressButtonBehavior;
   doc["longPressChapterSkip"] = s.longPressButtonBehavior == CrossPointSettings::LONG_PRESS_CHAPTER_SKIP;
   doc["shortPwrBtn"] = s.shortPwrBtn;
