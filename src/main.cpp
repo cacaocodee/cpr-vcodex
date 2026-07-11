@@ -85,6 +85,15 @@ EpdFont bookerly18BoldItalicFont(&bookerly_18_bolditalic);
 EpdFontFamily bookerly18FontFamily(&bookerly18RegularFont, &bookerly18BoldFont, &bookerly18ItalicFont,
                                    &bookerly18BoldItalicFont);
 
+// NotoSans 10 stays outside the CPR_ENABLE_EXTRA_FONTS gate: it is the UI
+// font for Vietnamese (Ubuntu lacks many VI glyphs) and the language picker.
+EpdFont notosans10RegularFont(&notosans_10_regular);
+EpdFont notosans10BoldFont(&notosans_10_bold);
+EpdFont notosans10ItalicFont(&notosans_10_italic);
+EpdFont notosans10BoldItalicFont(&notosans_10_bolditalic);
+EpdFontFamily notosans10FontFamily(&notosans10RegularFont, &notosans10BoldFont, &notosans10ItalicFont,
+                                   &notosans10BoldItalicFont);
+
 #if CPR_ENABLE_EXTRA_FONTS
 // Lexend is bundled with regular and bold only. Italic falls back to regular,
 // and bold italic falls back to bold to keep the family complete for EPUB styling.
@@ -104,12 +113,6 @@ EpdFont lexend18RegularFont(&lexend_18_regular);
 EpdFont lexend18BoldFont(&lexend_18_bold);
 EpdFontFamily lexend18FontFamily(&lexend18RegularFont, &lexend18BoldFont, &lexend18RegularFont, &lexend18BoldFont);
 
-EpdFont notosans10RegularFont(&notosans_10_regular);
-EpdFont notosans10BoldFont(&notosans_10_bold);
-EpdFont notosans10ItalicFont(&notosans_10_italic);
-EpdFont notosans10BoldItalicFont(&notosans_10_bolditalic);
-EpdFontFamily notosans10FontFamily(&notosans10RegularFont, &notosans10BoldFont, &notosans10ItalicFont,
-                                   &notosans10BoldItalicFont);
 EpdFont notosans12RegularFont(&notosans_12_regular);
 EpdFont notosans12BoldFont(&notosans_12_bold);
 EpdFont notosans12ItalicFont(&notosans_12_italic);
@@ -151,9 +154,7 @@ EpdFontFamily ui12FontFamily(&ui12RegularFont, &ui12BoldFont);
 namespace {
 
 bool shouldUseNotoUiFonts(const Language lang) {
-#if defined(OMIT_FONTS) || !CPR_ENABLE_EXTRA_FONTS
-  // Without NotoSans the Vietnamese UI falls back to the Ubuntu fonts
-  // (incomplete VI glyph coverage) — known debloat limitation.
+#ifdef OMIT_FONTS
   (void)lang;
   return false;
 #else
@@ -164,7 +165,7 @@ bool shouldUseNotoUiFonts(const Language lang) {
 void applyUiFontsForLanguage(const Language lang) {
   renderer.insertFont(SMALL_FONT_ID, smallFontFamily);
 
-#if defined(OMIT_FONTS) || !CPR_ENABLE_EXTRA_FONTS
+#ifdef OMIT_FONTS
   (void)lang;
   renderer.insertFont(UI_10_FONT_ID, ui10FontFamily);
   renderer.insertFont(UI_12_FONT_ID, ui12FontFamily);
