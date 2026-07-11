@@ -79,6 +79,9 @@ class ChapterHtmlSlimParser {
   bool lowMemoryAbort = false;
   bool attemptedTextLayoutFontCacheRelease = false;
   bool loggedSoftLowMemoryContinuation = false;
+  const char* abortStage = nullptr;  // stage string at low-memory abort
+  uint32_t abortFreeHeap = 0;
+  uint32_t abortMaxAlloc = 0;
 
   std::string lastImageDimensionsPath;
   ImageDimensions lastImageDimensions = {0, 0};
@@ -224,4 +227,9 @@ class ChapterHtmlSlimParser {
   const std::vector<std::pair<std::string, uint16_t>>& getAnchors() const { return anchorData; }
   bool wasLowMemoryFallbackTriggered() const { return lowMemoryImageFallback; }
   bool wasLowMemoryAbortTriggered() const { return lowMemoryAbort; }
+  // Diagnostics for the low-memory abort: which stage tripped it and the heap
+  // at that exact moment (surfaced on the section-load-failure screen).
+  const char* getAbortStage() const { return abortStage; }
+  uint32_t getAbortFreeHeap() const { return abortFreeHeap; }
+  uint32_t getAbortMaxAlloc() const { return abortMaxAlloc; }
 };

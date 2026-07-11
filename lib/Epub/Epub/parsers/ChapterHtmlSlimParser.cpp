@@ -230,6 +230,9 @@ bool ChapterHtmlSlimParser::shouldAbortForLowMemory(const char* stage) {
 
   LOG_ERR("EHP", "Critical low heap during %s (%u free, %u max alloc); aborting section build", stage, heap.freeHeap,
           heap.maxAllocHeap);
+  abortStage = stage;
+  abortFreeHeap = heap.freeHeap;
+  abortMaxAlloc = heap.maxAllocHeap;
   lowMemoryAbort = true;
   return true;
 }
@@ -240,6 +243,9 @@ bool ChapterHtmlSlimParser::startNewPage(const char* reason) {
     const auto heap = MemoryBudget::snapshot();
     LOG_ERR("EHP", "Failed to create page during %s (%u free, %u max alloc)", reason, heap.freeHeap,
             heap.maxAllocHeap);
+    abortStage = reason;
+    abortFreeHeap = heap.freeHeap;
+    abortMaxAlloc = heap.maxAllocHeap;
     lowMemoryAbort = true;
     return false;
   }

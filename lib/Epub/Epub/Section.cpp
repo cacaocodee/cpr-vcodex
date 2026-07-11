@@ -210,12 +210,14 @@ bool Section::createSectionFile(const int fontId, const float lineCompression, c
 
   if (!success) {
     LOG_ERR("SCT", "Failed to stream item contents to temp file after retries");
+    lastBuildDiag = "sd: stream chapter failed";
     return false;
   }
 
   LOG_DBG("SCT", "Streamed temp HTML to %s (%d bytes)", tmpHtmlPath.c_str(), fileSize);
 
   if (!Storage.openFileForWrite("SCT", filePath, file)) {
+    lastBuildDiag = "sd: open cache failed";
     return false;
   }
   writeSectionFileHeader(fontId, lineCompression, extraParagraphSpacing, forceParagraphIndents, paragraphAlignment,
@@ -268,6 +270,15 @@ bool Section::createSectionFile(const int fontId, const float lineCompression, c
     LOG_ERR("SCT", "Failed to parse XML and build pages (lowMemoryAbort=%u imageFallback=%u free=%u maxAlloc=%u)",
             visitor.wasLowMemoryAbortTriggered() ? 1U : 0U, visitor.wasLowMemoryFallbackTriggered() ? 1U : 0U,
             heap.freeHeap, heap.maxAllocHeap);
+    char diag[96];
+    if (visitor.wasLowMemoryAbortTriggered()) {
+      snprintf(diag, sizeof(diag), "oom @%s: %uK free / %uK max",
+               visitor.getAbortStage() ? visitor.getAbortStage() : "?", visitor.getAbortFreeHeap() / 1024,
+               visitor.getAbortMaxAlloc() / 1024);
+    } else {
+      snprintf(diag, sizeof(diag), "parse failed (not oom), %uK free", heap.freeHeap / 1024);
+    }
+    lastBuildDiag = diag;
     // Explicitly close() file before calling Storage.remove()
     file.close();
     Storage.remove(filePath.c_str());

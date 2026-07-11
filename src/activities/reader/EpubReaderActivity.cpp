@@ -1261,12 +1261,34 @@ void EpubReaderActivity::render(RenderLock&& lock) {
 
       const auto popupFn = [this]() { GUI.drawPopup(renderer, tr(STR_INDEXING)); };
 
-      if (!section->createSectionFile(
-              SETTINGS.getReaderFontId(), SETTINGS.getReaderLineCompression(), SETTINGS.extraParagraphSpacing,
-              SETTINGS.forceParagraphIndents, SETTINGS.paragraphAlignment, viewportWidth, viewportHeight,
-              SETTINGS.hyphenationEnabled, bionicNormalLayout, SETTINGS.embeddedStyle, SETTINGS.imageRendering,
-              popupFn)) {
+      bool built = section->createSectionFile(
+          SETTINGS.getReaderFontId(), SETTINGS.getReaderLineCompression(), SETTINGS.extraParagraphSpacing,
+          SETTINGS.forceParagraphIndents, SETTINGS.paragraphAlignment, viewportWidth, viewportHeight,
+          SETTINGS.hyphenationEnabled, bionicNormalLayout, SETTINGS.embeddedStyle, SETTINGS.imageRendering, popupFn);
+
+      if (!built) {
+        // Section builds abort on low heap (common with the BLE HID host
+        // resident). Free every reader-side cache and retry once with a
+        // fresh Section before showing the failure screen.
+        const auto heapBefore = MemoryBudget::snapshot();
+        section.reset();
+        releaseReaderSdFontCachesForLowMemory(renderer, "ERS", "section build retry");
+        if (auto* fontCache = renderer.getFontCacheManager()) {
+          fontCache->clearCache();
+        }
+        const auto heapAfter = MemoryBudget::snapshot();
+        LOG_ERR("ERS", "Section build failed, retrying after cache release (free=%u->%u maxAlloc=%u->%u)",
+                heapBefore.freeHeap, heapAfter.freeHeap, heapBefore.maxAllocHeap, heapAfter.maxAllocHeap);
+        section = std::unique_ptr<Section>(new Section(epub, currentSpineIndex, renderer));
+        built = section->createSectionFile(
+            SETTINGS.getReaderFontId(), SETTINGS.getReaderLineCompression(), SETTINGS.extraParagraphSpacing,
+            SETTINGS.forceParagraphIndents, SETTINGS.paragraphAlignment, viewportWidth, viewportHeight,
+            SETTINGS.hyphenationEnabled, bionicNormalLayout, SETTINGS.embeddedStyle, SETTINGS.imageRendering, popupFn);
+      }
+
+      if (!built) {
         LOG_ERR("ERS", "Failed to persist page data to SD");
+        sectionFailureDiag = section->lastBuildDiag;
         section.reset();
         renderSectionLoadFailure();
         automaticPageTurnActive = false;
@@ -1691,6 +1713,18 @@ void EpubReaderActivity::renderSectionLoadFailure() {
   renderer.drawRect(x, y, boxW, boxH, true);
   renderer.drawLine(x + 24, y + 24, x + boxW - 25, y + boxH - 25, 3, true);
   renderer.drawLine(x + boxW - 25, y + 24, x + 24, y + boxH - 25, 3, true);
+  // Indexing failures are usually heap exhaustion; put the numbers on the
+  // screen so a photo of this state carries the diagnosis (serial logging is
+  // not always available in the field).
+  {
+    const auto heapNow = MemoryBudget::snapshot();
+    char diag[64];
+    snprintf(diag, sizeof(diag), "free %uK / maxalloc %uK", heapNow.freeHeap / 1024, heapNow.maxAllocHeap / 1024);
+    renderer.drawCenteredText(UI_10_FONT_ID, y + boxH + 24, diag);
+    if (!sectionFailureDiag.empty()) {
+      renderer.drawCenteredText(UI_10_FONT_ID, y + boxH + 48, sectionFailureDiag.c_str());
+    }
+  }
   renderer.displayBuffer();
 }
 

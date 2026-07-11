@@ -25,6 +25,9 @@ class Section {
  public:
   uint16_t pageCount = 0;
   int currentPage = 0;
+  // One-line diagnosis of the last createSectionFile failure (shown on the
+  // section-load-failure screen so field reports carry the cause).
+  std::string lastBuildDiag;
 
   explicit Section(const std::shared_ptr<Epub>& epub, const int spineIndex, GfxRenderer& renderer)
       : epub(epub),

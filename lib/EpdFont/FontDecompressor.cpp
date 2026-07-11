@@ -5,6 +5,27 @@
 #include <Utf8.h>
 
 #include <cstdlib>
+#include <new>
+
+// Grow a byte vector without risking an uncatchable std::bad_alloc — this
+// project builds with -fno-exceptions, so a failed resize() aborts the whole
+// firmware (seen live on the X3 with the BLE HID host resident). Growth only
+// proceeds when the heap has a large-enough contiguous block plus margin;
+// returns false (leaving the vector usable) when it doesn't.
+static bool safeGrow(std::vector<uint8_t>& buf, size_t newSize) {
+  if (newSize <= buf.size()) {
+    return true;
+  }
+  if (newSize > buf.capacity()) {
+    // Vector growth allocates the new block while the old one is still held
+    constexpr size_t HEADROOM = 1024;
+    if (ESP.getMaxAllocHeap() < newSize + HEADROOM) {
+      return false;
+    }
+  }
+  buf.resize(newSize);
+  return true;
+}
 
 FontDecompressor::~FontDecompressor() { deinit(); }
 
@@ -174,8 +195,7 @@ const uint8_t* FontDecompressor::getBitmap(const EpdFontData* fontData, const Ep
     stats.cacheMisses++;
     const EpdFontGroup& group = fontData->groups[groupIndex];
 
-    hotGroup.resize(group.uncompressedSize);
-    if (hotGroup.empty()) {
+    if (!safeGrow(hotGroup, group.uncompressedSize)) {
       LOG_ERR("FDC", "Failed to allocate %u bytes for hot group %u", group.uncompressedSize, groupIndex);
       hotGroupFont = nullptr;
       hotGroupIndex = UINT16_MAX;
@@ -200,10 +220,7 @@ const uint8_t* FontDecompressor::getBitmap(const EpdFontData* fontData, const Ep
   }
 
   // Compact just the requested glyph from byte-aligned data into scratch buffer
-  if (glyph->dataLength > hotGlyphBuf.size()) {
-    hotGlyphBuf.resize(glyph->dataLength);
-  }
-  if (hotGlyphBuf.empty()) {
+  if (!safeGrow(hotGlyphBuf, glyph->dataLength)) {
     stats.getBitmapTimeUs += micros() - tStart;
     return nullptr;
   }
