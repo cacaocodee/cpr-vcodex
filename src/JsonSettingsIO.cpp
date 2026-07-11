@@ -34,6 +34,8 @@ constexpr uint8_t FONT_SIZE_SCHEMA_VERSION = 2;
 constexpr uint8_t UI_THEME_SCHEMA_VERSION = 3;
 constexpr uint8_t TEXT_DARKNESS_SCHEMA_VERSION = 2;
 constexpr uint8_t FLASHCARD_STUDY_MODE_SCHEMA_VERSION = 2;
+// v2: File Transfer and Sleep promoted to the top of the Apps list.
+constexpr uint8_t SHORTCUT_ORDER_SCHEMA_VERSION = 2;
 
 class HalFileStream : public Stream {
  public:
@@ -547,6 +549,16 @@ bool loadSettingsDirect(CrossPointSettings& s, const JsonDocument& doc, bool* ne
   s.opdsBrowserShortcutOrder = clamp(doc["opdsBrowserShortcutOrder"] | s.opdsBrowserShortcutOrder, shortcutOrderCount,
                                      s.opdsBrowserShortcutOrder);
 
+  // One-time reorder for existing settings files: promote File Transfer and
+  // Sleep to the top of the Apps list. normalizeShortcutOrderSettings resolves
+  // the duplicated slot values on the next reorder pass.
+  const uint8_t shortcutOrderSchemaVersion = doc["shortcutOrderSchemaVersion"] | static_cast<uint8_t>(0);
+  if (shortcutOrderSchemaVersion < SHORTCUT_ORDER_SCHEMA_VERSION) {
+    s.fileTransferShortcutOrder = 0;
+    s.sleepShortcutOrder = 1;
+    if (needsResave) *needsResave = true;
+  }
+
   s.browseFilesShortcutVisible = clamp(doc["browseFilesShortcutVisible"] | s.browseFilesShortcutVisible,
                                        static_cast<uint8_t>(2), s.browseFilesShortcutVisible);
   s.statsShortcutVisible =
@@ -838,6 +850,7 @@ bool JsonSettingsIO::saveSettings(const CrossPointSettings& s, const char* path)
   doc["sleepShortcutOrder"] = s.sleepShortcutOrder;
   doc["opdsBrowserShortcut"] = s.opdsBrowserShortcut;
   doc["opdsBrowserShortcutOrder"] = s.opdsBrowserShortcutOrder;
+  doc["shortcutOrderSchemaVersion"] = SHORTCUT_ORDER_SCHEMA_VERSION;
   doc["browseFilesShortcutVisible"] = s.browseFilesShortcutVisible;
   doc["syncDayShortcutVisible"] = s.syncDayShortcutVisible;
   doc["settingsShortcutVisible"] = s.settingsShortcutVisible;

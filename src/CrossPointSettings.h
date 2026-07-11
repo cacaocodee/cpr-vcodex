@@ -366,11 +366,11 @@ class CrossPointSettings {
   uint8_t dictionaryShortcut = SHORTCUT_APPS;
   uint8_t dictionaryShortcutOrder = 15;
   uint8_t fileTransferShortcut = SHORTCUT_APPS;
-  uint8_t fileTransferShortcutOrder = 16;
+  uint8_t fileTransferShortcutOrder = 0;  // Promoted to the top of Apps
   uint8_t screenCleanShortcut = SHORTCUT_APPS;
   uint8_t screenCleanShortcutOrder = 17;
   uint8_t sleepShortcut = SHORTCUT_APPS;
-  uint8_t sleepShortcutOrder = 18;
+  uint8_t sleepShortcutOrder = 1;  // Promoted to the top of Apps, after File Transfer
   uint8_t opdsBrowserShortcut = SHORTCUT_HOME;
   uint8_t opdsBrowserShortcutOrder = 19;
   uint8_t browseFilesShortcutVisible = 1;
