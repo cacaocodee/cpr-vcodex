@@ -484,12 +484,33 @@ void setup() {
 #endif
 
   const auto wakeupReason = gpio.getWakeupReason();
+  bool wakeToCycleWallpaper = false;
   switch (wakeupReason) {
     case HalGPIO::WakeupReason::PowerButton:
       LOG_DBG("MAIN", "Verifying power button press duration");
       gpio.verifyPowerButtonWakeup(SETTINGS.getPowerButtonDuration(),
                                    SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::SLEEP ||
                                        SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::SLEEP_DBL_REFRESH);
+      // Double-click while sleeping cycles to the next wallpaper instead of
+      // waking: after the wake press, watch briefly for a stable release
+      // followed by a second press. A held (deliberate) wake never arms.
+      {
+        const unsigned long t0 = millis();
+        uint8_t releasedSamples = 0;
+        bool armed = false;
+        while (millis() - t0 < 600) {
+          gpio.update();
+          if (!gpio.isPressed(HalGPIO::BTN_POWER)) {
+            if (!armed && ++releasedSamples >= 5) {
+              armed = true;  // release debounced for ~50ms
+            }
+          } else if (armed) {
+            wakeToCycleWallpaper = true;
+            break;
+          }
+          delay(10);
+        }
+      }
       break;
     case HalGPIO::WakeupReason::AfterUSBPower:
       // If USB power caused a cold boot, go back to sleep
@@ -513,19 +534,35 @@ void setup() {
   }
 
   BootRecovery::enterStage(BootRecovery::BootStage::DisplayAndFonts);
-  setupDisplayAndFonts(isSilentReboot);
+  // Wallpaper cycling inits the display seamlessly: the old wallpaper stays
+  // on the panel until the new one draws (no clear, no boot logo).
+  setupDisplayAndFonts(isSilentReboot || wakeToCycleWallpaper);
 
-  if (!isSilentReboot) {
+  if (!isSilentReboot && !wakeToCycleWallpaper) {
     activityManager.goToBoot();
   }
 
+  // Wallpaper-cycle boots load only the stores the configured sleep screen
+  // actually renders — the device goes straight back to sleep.
+  const uint8_t sleepMode = SETTINGS.sleepScreen;
+  const bool sleepScreenNeedsStats = sleepMode == CrossPointSettings::SLEEP_SCREEN_MODE::READING_DASHBOARD ||
+                                     sleepMode == CrossPointSettings::SLEEP_SCREEN_MODE::COVER_STATS ||
+                                     sleepMode == CrossPointSettings::SLEEP_SCREEN_MODE::COVER_STATS_V2 ||
+                                     sleepMode == CrossPointSettings::SLEEP_SCREEN_MODE::CUSTOM_STATS ||
+                                     sleepMode == CrossPointSettings::SLEEP_SCREEN_MODE::CUSTOM_STATS_V2;
+  const bool sleepScreenNeedsCover = sleepMode == CrossPointSettings::SLEEP_SCREEN_MODE::COVER ||
+                                     sleepMode == CrossPointSettings::SLEEP_SCREEN_MODE::COVER_CUSTOM ||
+                                     sleepMode == CrossPointSettings::SLEEP_SCREEN_MODE::COVER_STATS ||
+                                     sleepMode == CrossPointSettings::SLEEP_SCREEN_MODE::COVER_STATS_V2;
+
   const bool skipStateLoad = manualSafeBoot || BootRecovery::shouldSkipState();
-  const bool skipReadingStatsLoad =
-      manualSafeBoot || BootRecovery::shouldSkipReadingStats() || !CPR_ENABLE_READING_STATS;
-  const bool skipRecentBooksLoad = manualSafeBoot || BootRecovery::shouldSkipRecentBooks();
-  const bool skipFavoritesLoad = manualSafeBoot || BootRecovery::shouldSkipFavorites();
-  const bool skipFlashcardsLoad = manualSafeBoot || BootRecovery::shouldSkipFlashcards();
-  const bool skipAchievementsLoad = manualSafeBoot || BootRecovery::shouldSkipAchievements();
+  const bool skipReadingStatsLoad = manualSafeBoot || BootRecovery::shouldSkipReadingStats() ||
+                                    !CPR_ENABLE_READING_STATS || (wakeToCycleWallpaper && !sleepScreenNeedsStats);
+  const bool skipRecentBooksLoad =
+      manualSafeBoot || BootRecovery::shouldSkipRecentBooks() || (wakeToCycleWallpaper && !sleepScreenNeedsCover);
+  const bool skipFavoritesLoad = manualSafeBoot || BootRecovery::shouldSkipFavorites() || wakeToCycleWallpaper;
+  const bool skipFlashcardsLoad = manualSafeBoot || BootRecovery::shouldSkipFlashcards() || wakeToCycleWallpaper;
+  const bool skipAchievementsLoad = manualSafeBoot || BootRecovery::shouldSkipAchievements() || wakeToCycleWallpaper;
   const bool forceHomeBoot = manualSafeBoot || BootRecovery::shouldForceHome();
 
   if (skipStateLoad) {
@@ -578,6 +615,17 @@ void setup() {
                                 wakeupReason != HalGPIO::WakeupReason::AfterFlash;
   const uint8_t syncDayReminderThreshold = SETTINGS.getSyncDayReminderStartThreshold();
   BootRecovery::enterStage(BootRecovery::BootStage::RouteDecision);
+
+  if (wakeToCycleWallpaper) {
+    // Double-click from sleep: render the next wallpaper (SleepActivity
+    // advances the image selection itself) and go straight back to deep
+    // sleep. Deliberately not enterDeepSleep(): that would overwrite
+    // APP_STATE.lastSleepFromReader and break resume-to-book on real wake.
+    LOG_INF("MAIN", "Double-click wake: cycling to next sleep wallpaper");
+    activityManager.goToSleep(/*quickTransition=*/true);
+    powerManager.startDeepSleep(gpio);
+    // never returns
+  }
 
   if (HalSystem::isRebootFromPanic() && !forceHomeBoot) {
     // If we rebooted from a panic, go to crash report screen to show the panic info

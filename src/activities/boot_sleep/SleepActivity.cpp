@@ -673,12 +673,12 @@ void SleepActivity::onEnter() {
 
   if (APP_STATE.lastSleepFromReader) {
     ReaderUtils::applyOrientation(renderer, SETTINGS.orientation);
-    if (!usesCustomSleepImages()) {
+    if (!usesCustomSleepImages() && !quickTransition_) {
       GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
     }
     ReaderUtils::applyUiOrientation(renderer);
   } else {
-    if (!usesCustomSleepImages()) {
+    if (!usesCustomSleepImages() && !quickTransition_) {
       GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
     }
   }
@@ -733,7 +733,9 @@ void SleepActivity::renderCustomSleepScreen() const {
         return;
       }
     } else {
-      GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
+      if (!quickTransition_) {
+        GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
+      }
       FsFile file;
       if (SleepScreenCache::load(renderer, selected.path)) {
         displaySleepBuffer(renderer);
@@ -755,7 +757,9 @@ void SleepActivity::renderCustomSleepScreen() const {
 
   FsFile file;
   if (Storage.openFileForRead("SLP", "/sleep.bmp", file)) {
-    GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
+    if (!quickTransition_) {
+      GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
+    }
     Bitmap bitmap(file, true);
     if (bitmap.parseHeaders() == BmpReaderError::Ok) {
       LOG_DBG("SLP", "Loading: /sleep.bmp");

@@ -91,7 +91,7 @@ class ActivityManager {
   void goToReader(std::string path);
   void goToKOReaderSync();
   void goToEpubBookmark(std::string path, int spineIndex, uint32_t page);
-  void goToSleep();
+  void goToSleep(bool quickTransition = false);
   void goToBoot();
   void goToFullScreenMessage(std::string message, EpdFontFamily::Style style = EpdFontFamily::REGULAR);
   void goToCrashReport();

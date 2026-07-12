@@ -277,8 +277,8 @@ void ActivityManager::goToEpubBookmark(std::string path, const int spineIndex, c
       renderer, mappedInput, std::move(path), ReaderActivity::EpubBookmarkLaunch{true, spineIndex, page}));
 }
 
-void ActivityManager::goToSleep() {
-  replaceActivity(std::make_unique<SleepActivity>(renderer, mappedInput));
+void ActivityManager::goToSleep(const bool quickTransition) {
+  replaceActivity(std::make_unique<SleepActivity>(renderer, mappedInput, quickTransition));
   loop();  // Important: sleep screen must be rendered immediately, the caller will go to sleep right after this returns
 }
 
