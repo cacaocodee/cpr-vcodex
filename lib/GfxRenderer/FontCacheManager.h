@@ -16,6 +16,9 @@ class FontCacheManager {
   void setFontDecompressor(FontDecompressor* d);
 
   void clearCache();
+  // Free only transient decompression buffers; persistent page slots survive
+  // (used at the end of every page render — see PrewarmScope dtor)
+  void trimTransientCaches();
   void prewarmCache(int fontId, const char* utf8Text, uint8_t styleMask = 0x0F);
   void logStats(const char* label = "render");
   void resetStats();

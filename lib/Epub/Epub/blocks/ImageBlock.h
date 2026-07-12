@@ -1,5 +1,6 @@
 #pragma once
 #include <HalStorage.h>
+#include <Serialization.h>
 
 #include <memory>
 #include <string>
@@ -24,7 +25,7 @@ class ImageBlock final : public Block {
 
   void render(GfxRenderer& renderer, const int x, const int y);
   bool serialize(FsFile& file);
-  static std::unique_ptr<ImageBlock> deserialize(FsFile& file);
+  static std::unique_ptr<ImageBlock> deserialize(serialization::Reader& file);
 
  private:
   std::string imagePath;

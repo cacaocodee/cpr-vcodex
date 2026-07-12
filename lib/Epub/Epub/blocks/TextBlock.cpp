@@ -267,7 +267,7 @@ bool TextBlock::serialize(FsFile& file) const {
   return true;
 }
 
-std::unique_ptr<TextBlock> TextBlock::deserialize(FsFile& file) {
+std::unique_ptr<TextBlock> TextBlock::deserialize(serialization::Reader& file) {
   uint16_t wc;
   std::vector<std::string> words;
   std::vector<int16_t> wordXpos;

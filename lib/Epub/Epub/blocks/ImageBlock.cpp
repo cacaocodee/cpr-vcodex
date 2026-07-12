@@ -261,7 +261,7 @@ bool ImageBlock::serialize(FsFile& file) {
   return true;
 }
 
-std::unique_ptr<ImageBlock> ImageBlock::deserialize(FsFile& file) {
+std::unique_ptr<ImageBlock> ImageBlock::deserialize(serialization::Reader& file) {
   std::string path;
   serialization::readString(file, path);
   int16_t w, h;

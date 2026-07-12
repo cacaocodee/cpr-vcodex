@@ -88,8 +88,27 @@ class EpubReaderActivity final : public Activity {
   void renderSectionLoadFailure();
   // Diagnosis carried from the failed Section build to the failure screen
   std::string sectionFailureDiag;
+  // Perf overlay (CPR_PERF_OVERLAY builds): previous page-turn stage timings
+  uint32_t perfLoadMs = 0;
+  uint32_t perfPrewarmMs = 0;
+  uint32_t perfRenderMs = 0;
+  uint32_t perfDisplayMs = 0;
+  uint32_t perfTotalMs = 0;
+  void drawPerfOverlay() const;
   void silentIndexNextChapterIfNeeded(uint16_t viewportWidth, uint16_t viewportHeight);
-  void saveProgress(int spineIndex, int currentPage, int pageCount);
+  void saveProgress(int spineIndex, int currentPage, int pageCount);  // note + immediate flush
+  // Batched progress persistence: noteProgress updates RAM stats and marks
+  // the SD write dirty; flushProgress performs the deferred write.
+  void noteProgress(int spineIndex, int currentPage, int pageCount);
+  void flushProgress();
+  int pendingProgressSpine = 0;
+  int pendingProgressPage = 0;
+  int pendingProgressPageCount = 0;
+  int lastFlushedProgressSpine = -1;
+  bool progressDirty = false;
+  unsigned long lastProgressNoteMs = 0;
+  unsigned long lastProgressFlushMs = 0;
+  uint16_t pagesSinceProgressFlush = 0;
   // Jump to a percentage of the book (0-100), mapping it to spine and page.
   void jumpToPercent(int percent);
   void onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction action);

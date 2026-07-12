@@ -25,6 +25,13 @@
 #define CPR_ENABLE_EXTRA_FONTS 1
 #endif
 
+// 1 = draw a one-line page-render timing overlay in the reader (load /
+// prewarm / render / display / total ms + free heap, values from the
+// previous page turn). Debug aid for devices where serial is unavailable.
+#ifndef CPR_PERF_OVERLAY
+#define CPR_PERF_OVERLAY 0
+#endif
+
 // 0 = keep the reading-stats store unloaded to free heap (~5-25KB depending
 // on library size and history). Code stays compiled and the stats UI remains
 // reachable but shows an empty store; persistence is suspended via the

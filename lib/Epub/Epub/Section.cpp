@@ -25,6 +25,15 @@ struct PageLutEntry {
 };
 
 constexpr uint32_t PARAGRAPH_LUT_ENTRY_SIZE = sizeof(uint32_t) + sizeof(uint16_t) + sizeof(uint16_t);
+
+// RAM LUT limits: a 2048-page section costs 8KB (page LUT) + 16KB (paragraph
+// LUT); larger sections fall back to the legacy on-disk lookups.
+constexpr uint16_t MAX_RAM_LUT_PAGES = 2048;
+// A page blob is typically 1-6KB; tables can be larger. Above this the
+// legacy streaming path handles the page.
+constexpr size_t MAX_PAGE_SPAN_BYTES = 24u * 1024u;
+// Keep this much contiguous heap available after transient read buffers
+constexpr size_t SPAN_ALLOC_HEADROOM = 8u * 1024u;
 }  // namespace
 
 uint32_t Section::onPageComplete(std::unique_ptr<Page> page) {
@@ -143,12 +152,95 @@ bool Section::loadSectionFile(const int fontId, const float lineCompression, con
   serialization::readPod(file, pageCount);
   // Explicit close() required: member variable persists beyond function scope
   file.close();
+  loadLutsFromFile();  // best effort — empty LUTs just mean the legacy paths run
   LOG_DBG("SCT", "Deserialization succeeded: %d pages", pageCount);
   return true;
 }
 
+bool Section::loadLutsFromFile() {
+  pageLut_.clear();
+  pageLut_.shrink_to_fit();
+  paraLut_.clear();
+  paraLut_.shrink_to_fit();
+  closeReadFile();
+
+  if (pageCount == 0 || pageCount > MAX_RAM_LUT_PAGES) {
+    return false;
+  }
+
+  FsFile f;
+  if (!Storage.openFileForRead("SCT", filePath, f)) {
+    return false;
+  }
+  const uint32_t fileSize = f.size();
+  f.seek(HEADER_SIZE - sizeof(uint32_t) * 3);
+  serialization::readPod(f, lutOffset_);
+  serialization::readPod(f, anchorMapOffset_);
+  serialization::readPod(f, paragraphLutOffset_);
+
+  const uint32_t pageLutBytes = static_cast<uint32_t>(pageCount) * sizeof(uint32_t);
+  if (lutOffset_ < HEADER_SIZE || lutOffset_ + pageLutBytes > fileSize || anchorMapOffset_ < lutOffset_ ||
+      paragraphLutOffset_ < anchorMapOffset_ || paragraphLutOffset_ >= fileSize) {
+    LOG_ERR("SCT", "Invalid section offsets (lut=%u anchors=%u para=%u size=%u)", lutOffset_, anchorMapOffset_,
+            paragraphLutOffset_, fileSize);
+    lutOffset_ = anchorMapOffset_ = paragraphLutOffset_ = 0;
+    f.close();
+    return false;
+  }
+
+  // The LUTs are small (see MAX_RAM_LUT_PAGES) but don't gamble under
+  // pressure — the legacy paths work without them.
+  if (ESP.getMaxAllocHeap() < pageLutBytes + SPAN_ALLOC_HEADROOM) {
+    f.close();
+    return false;
+  }
+  pageLut_.resize(pageCount);
+  f.seek(lutOffset_);
+  if (f.read(reinterpret_cast<uint8_t*>(pageLut_.data()), pageLutBytes) != static_cast<int>(pageLutBytes)) {
+    LOG_ERR("SCT", "Failed to read page LUT");
+    pageLut_.clear();
+    pageLut_.shrink_to_fit();
+    f.close();
+    return false;
+  }
+
+  // Paragraph LUT: entry layout on disk matches ParaLutEntry exactly
+  static_assert(sizeof(ParaLutEntry) == PARAGRAPH_LUT_ENTRY_SIZE, "ParaLutEntry must match on-disk layout");
+  f.seek(paragraphLutOffset_);
+  uint16_t paraCount = 0;
+  serialization::readPod(f, paraCount);
+  const uint32_t paraBytes = static_cast<uint32_t>(paraCount) * PARAGRAPH_LUT_ENTRY_SIZE;
+  if (paraCount > 0 && paraCount <= MAX_RAM_LUT_PAGES &&
+      paragraphLutOffset_ + sizeof(uint16_t) + paraBytes <= fileSize &&
+      ESP.getMaxAllocHeap() >= paraBytes + SPAN_ALLOC_HEADROOM) {
+    paraLut_.resize(paraCount);
+    if (f.read(reinterpret_cast<uint8_t*>(paraLut_.data()), paraBytes) != static_cast<int>(paraBytes)) {
+      paraLut_.clear();
+      paraLut_.shrink_to_fit();
+    }
+  }
+  f.close();
+  return true;
+}
+
+bool Section::ensureReadFile() const {
+  if (readFileOpen_) {
+    return true;
+  }
+  readFileOpen_ = Storage.openFileForRead("SCT", filePath, readFile_);
+  return readFileOpen_;
+}
+
+void Section::closeReadFile() const {
+  if (readFileOpen_) {
+    readFile_.close();
+    readFileOpen_ = false;
+  }
+}
+
 // Your updated class method (assuming you are using the 'SD' object, which is a wrapper for a specific filesystem)
 bool Section::clearCache() const {
+  closeReadFile();  // about to remove the file the persistent handle points at
   if (!Storage.exists(filePath.c_str())) {
     LOG_DBG("SCT", "Cache does not exist, no action needed");
     return true;
@@ -171,6 +263,14 @@ bool Section::createSectionFile(const int fontId, const float lineCompression, c
                                 const std::function<void()>& popupFn) {
   const auto localPath = epub->getSpineItem(spineIndex).href;
   const auto tmpHtmlPath = epub->getCachePath() + "/.tmp_" + std::to_string(spineIndex) + ".html";
+
+  // The build rewrites filePath — drop the persistent read handle and any
+  // RAM LUTs pointing into the old file.
+  closeReadFile();
+  pageLut_.clear();
+  pageLut_.shrink_to_fit();
+  paraLut_.clear();
+  paraLut_.shrink_to_fit();
 
   // Create cache directory if it doesn't exist
   {
@@ -340,17 +440,48 @@ bool Section::createSectionFile(const int fontId, const float lineCompression, c
   if (cssParser) {
     cssParser->clear();
   }
+  loadLutsFromFile();  // freshly built file — pick up the LUTs for fast page loads
   return true;
 }
 
 std::unique_ptr<Page> Section::loadPageFromSectionFile() {
-  if (!Storage.openFileForRead("SCT", filePath, file)) {
+  if (currentPage < 0 || currentPage >= pageCount) {
+    LOG_ERR("SCT", "Page load out of bounds: %d/%u", currentPage, pageCount);
     return nullptr;
   }
 
-  if (currentPage < 0 || currentPage >= pageCount) {
-    LOG_ERR("SCT", "Page load out of bounds: %d/%u", currentPage, pageCount);
-    file.close();
+  // Fast path: RAM LUT + persistent handle + one contiguous read of the
+  // page's byte span, then deserialize from memory.
+  if (static_cast<size_t>(currentPage) < pageLut_.size() && lutOffset_ != 0 && ensureReadFile()) {
+    const uint32_t start = pageLut_[currentPage];
+    const uint32_t end = (currentPage + 1 < pageCount) ? pageLut_[currentPage + 1] : lutOffset_;
+    if (start >= HEADER_SIZE && end > start && end <= lutOffset_) {
+      const size_t span = end - start;
+      if (span <= MAX_PAGE_SPAN_BYTES && ESP.getMaxAllocHeap() >= span + SPAN_ALLOC_HEADROOM) {
+        std::vector<uint8_t> blob(span);
+        if (readFile_.seek(start) &&
+            readFile_.read(blob.data(), span) == static_cast<int>(span)) {
+          serialization::MemReader reader(blob.data(), span);
+          auto page = Page::deserialize(reader);
+          if (page && !reader.overrun()) {
+            return page;
+          }
+          LOG_ERR("SCT", "Page %d RAM deserialize failed (overrun=%d) — falling back to streaming", currentPage,
+                  reader.overrun() ? 1 : 0);
+        } else {
+          LOG_ERR("SCT", "Page %d span read failed — reopening", currentPage);
+          closeReadFile();
+        }
+      }
+    } else {
+      LOG_ERR("SCT", "Invalid RAM LUT span %u..%u (lut=%u) — dropping RAM LUT", start, end, lutOffset_);
+      pageLut_.clear();
+      pageLut_.shrink_to_fit();
+    }
+  }
+
+  // Legacy streaming path — also the low-memory and corrupt-LUT fallback
+  if (!Storage.openFileForRead("SCT", filePath, file)) {
     return nullptr;
   }
 
@@ -382,7 +513,8 @@ std::unique_ptr<Page> Section::loadPageFromSectionFile() {
 
   file.seek(pagePos);
 
-  auto page = Page::deserialize(file);
+  serialization::FileReader reader(file);
+  auto page = Page::deserialize(reader);
   // Explicit close() required: member variable persists beyond function scope
   file.close();
   return page;
@@ -419,6 +551,15 @@ std::optional<uint16_t> Section::getPageForAnchor(const std::string& anchor) con
 }
 
 std::optional<uint16_t> Section::getPageForParagraphIndex(const uint16_t pIndex) const {
+  if (!paraLut_.empty()) {
+    for (uint16_t i = 0; i < paraLut_.size(); i++) {
+      if (paraLut_[i].paragraphIndex >= pIndex) {
+        return i;
+      }
+    }
+    return static_cast<uint16_t>(paraLut_.size() - 1);
+  }
+
   FsFile f;
   if (!Storage.openFileForRead("SCT", filePath, f)) {
     return std::nullopt;
@@ -462,6 +603,15 @@ std::optional<uint16_t> Section::getPageForParagraphIndex(const uint16_t pIndex)
 }
 
 std::optional<uint16_t> Section::getPageForListItemIndex(const uint16_t liIndex) const {
+  if (!paraLut_.empty()) {
+    for (uint16_t i = 0; i < paraLut_.size(); i++) {
+      if (paraLut_[i].listItemIndex >= liIndex) {
+        return i;
+      }
+    }
+    return static_cast<uint16_t>(paraLut_.size() - 1);
+  }
+
   FsFile f;
   if (!Storage.openFileForRead("SCT", filePath, f)) {
     return std::nullopt;
@@ -505,6 +655,13 @@ std::optional<uint16_t> Section::getPageForListItemIndex(const uint16_t liIndex)
 }
 
 std::optional<uint16_t> Section::getParagraphIndexForPage(const uint16_t page) const {
+  if (!paraLut_.empty()) {
+    if (page >= paraLut_.size()) {
+      return std::nullopt;
+    }
+    return paraLut_[page].paragraphIndex;
+  }
+
   FsFile f;
   if (!Storage.openFileForRead("SCT", filePath, f)) {
     return std::nullopt;
@@ -537,6 +694,13 @@ std::optional<uint16_t> Section::getParagraphIndexForPage(const uint16_t page) c
 }
 
 std::optional<uint32_t> Section::getXhtmlByteOffsetForPage(const uint16_t page) const {
+  if (!paraLut_.empty()) {
+    if (page >= paraLut_.size() || paraLut_[page].xhtmlByteOffset == 0) {
+      return std::nullopt;
+    }
+    return paraLut_[page].xhtmlByteOffset;
+  }
+
   FsFile f;
   if (!Storage.openFileForRead("SCT", filePath, f)) {
     return std::nullopt;

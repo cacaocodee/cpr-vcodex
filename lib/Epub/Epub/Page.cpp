@@ -32,7 +32,7 @@ bool PageLine::serialize(FsFile& file) {
   return block->serialize(file);
 }
 
-std::unique_ptr<PageLine> PageLine::deserialize(FsFile& file) {
+std::unique_ptr<PageLine> PageLine::deserialize(serialization::Reader& file) {
   int16_t xPos;
   int16_t yPos;
   serialization::readPod(file, xPos);
@@ -68,7 +68,7 @@ bool PageImage::serialize(FsFile& file) {
   return imageBlock->serialize(file);
 }
 
-std::unique_ptr<PageImage> PageImage::deserialize(FsFile& file) {
+std::unique_ptr<PageImage> PageImage::deserialize(serialization::Reader& file) {
   int16_t xPos;
   int16_t yPos;
   serialization::readPod(file, xPos);
@@ -106,7 +106,7 @@ bool PageHorizontalRule::serialize(FsFile& file) {
   return true;
 }
 
-std::unique_ptr<PageHorizontalRule> PageHorizontalRule::deserialize(FsFile& file) {
+std::unique_ptr<PageHorizontalRule> PageHorizontalRule::deserialize(serialization::Reader& file) {
   int16_t xPos = 0;
   int16_t yPos = 0;
   uint16_t width = 0;
@@ -147,7 +147,7 @@ bool TableFragmentCell::serialize(FsFile& file) const {
   return true;
 }
 
-bool TableFragmentCell::deserialize(FsFile& file, TableFragmentCell& outCell) {
+bool TableFragmentCell::deserialize(serialization::Reader& file, TableFragmentCell& outCell) {
   uint8_t lineCount = 0;
   serialization::readPod(file, outCell.isHeader);
   serialization::readPod(file, lineCount);
@@ -186,7 +186,7 @@ bool TableFragmentRow::serialize(FsFile& file) const {
   return true;
 }
 
-bool TableFragmentRow::deserialize(FsFile& file, TableFragmentRow& outRow) {
+bool TableFragmentRow::deserialize(serialization::Reader& file, TableFragmentRow& outRow) {
   uint8_t cellCount = 0;
   serialization::readPod(file, outRow.height);
   serialization::readPod(file, outRow.headerSeparator);
@@ -282,7 +282,7 @@ bool PageTableFragment::serialize(FsFile& file) {
   return true;
 }
 
-std::unique_ptr<PageTableFragment> PageTableFragment::deserialize(FsFile& file) {
+std::unique_ptr<PageTableFragment> PageTableFragment::deserialize(serialization::Reader& file) {
   int16_t xPos = 0;
   int16_t yPos = 0;
   uint16_t width = 0;
@@ -401,7 +401,7 @@ bool Page::serialize(FsFile& file) const {
   return true;
 }
 
-std::unique_ptr<Page> Page::deserialize(FsFile& file) {
+std::unique_ptr<Page> Page::deserialize(serialization::Reader& file) {
   auto page = std::unique_ptr<Page>(new (std::nothrow) Page());
   if (!page) {
     LOG_ERR("PGE", "Deserialization failed: could not allocate page");

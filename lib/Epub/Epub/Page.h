@@ -1,5 +1,6 @@
 #pragma once
 #include <HalStorage.h>
+#include <Serialization.h>
 
 #include <algorithm>
 #include <cstring>
@@ -43,7 +44,7 @@ class PageLine final : public PageElement {
   void render(GfxRenderer& renderer, int fontId, int xOffset, int yOffset, uint8_t bionicReadingMode = 0) override;
   bool serialize(FsFile& file) override;
   PageElementTag getTag() const override { return TAG_PageLine; }
-  static std::unique_ptr<PageLine> deserialize(FsFile& file);
+  static std::unique_ptr<PageLine> deserialize(serialization::Reader& file);
 };
 
 // New PageImage class
@@ -56,7 +57,7 @@ class PageImage final : public PageElement {
   void render(GfxRenderer& renderer, int fontId, int xOffset, int yOffset, uint8_t bionicReadingMode = 0) override;
   bool serialize(FsFile& file) override;
   PageElementTag getTag() const override { return TAG_PageImage; }
-  static std::unique_ptr<PageImage> deserialize(FsFile& file);
+  static std::unique_ptr<PageImage> deserialize(serialization::Reader& file);
   const ImageBlock& getImageBlock() const { return *imageBlock; }
 };
 
@@ -71,7 +72,7 @@ class PageHorizontalRule final : public PageElement {
   void render(GfxRenderer& renderer, int fontId, int xOffset, int yOffset, uint8_t bionicReadingMode = 0) override;
   bool serialize(FsFile& file) override;
   PageElementTag getTag() const override { return TAG_PageHorizontalRule; }
-  static std::unique_ptr<PageHorizontalRule> deserialize(FsFile& file);
+  static std::unique_ptr<PageHorizontalRule> deserialize(serialization::Reader& file);
 };
 
 struct TableFragmentCell {
@@ -80,7 +81,7 @@ struct TableFragmentCell {
   std::vector<std::shared_ptr<TextBlock>> lines;
 
   bool serialize(FsFile& file) const;
-  static bool deserialize(FsFile& file, TableFragmentCell& outCell);
+  static bool deserialize(serialization::Reader& file, TableFragmentCell& outCell);
 };
 
 struct TableFragmentRow {
@@ -90,7 +91,7 @@ struct TableFragmentRow {
   std::vector<TableFragmentCell> cells;
 
   bool serialize(FsFile& file) const;
-  static bool deserialize(FsFile& file, TableFragmentRow& outRow);
+  static bool deserialize(serialization::Reader& file, TableFragmentRow& outRow);
 };
 
 class PageTableFragment final : public PageElement {
@@ -117,7 +118,7 @@ class PageTableFragment final : public PageElement {
   void render(GfxRenderer& renderer, int fontId, int xOffset, int yOffset, uint8_t bionicReadingMode = 0) override;
   bool serialize(FsFile& file) override;
   PageElementTag getTag() const override { return TAG_PageTableFragment; }
-  static std::unique_ptr<PageTableFragment> deserialize(FsFile& file);
+  static std::unique_ptr<PageTableFragment> deserialize(serialization::Reader& file);
   uint16_t getHeight() const;
   void recordFontUsage(FontCacheManager& fontCacheManager, int fontId, uint8_t bionicReadingMode = 0) const;
 };
@@ -143,7 +144,7 @@ class Page {
   void recordFontUsage(FontCacheManager& fontCacheManager, int fontId, uint8_t bionicReadingMode = 0) const;
   void renderImages(GfxRenderer& renderer, int xOffset, int yOffset) const;
   bool serialize(FsFile& file) const;
-  static std::unique_ptr<Page> deserialize(FsFile& file);
+  static std::unique_ptr<Page> deserialize(serialization::Reader& file);
 
   // Check if page contains any images (used to force full refresh)
   bool hasImages() const {

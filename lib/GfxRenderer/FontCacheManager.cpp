@@ -19,6 +19,10 @@ void FontCacheManager::clearCache() {
   }
 }
 
+void FontCacheManager::trimTransientCaches() {
+  if (fontDecompressor_) fontDecompressor_->trimTransient();
+}
+
 void FontCacheManager::prewarmCache(int fontId, const char* utf8Text, uint8_t styleMask) {
   // SD card font prewarm path: prewarm all requested styles in one call
   auto it = sdCardFonts_.find(fontId);
@@ -32,6 +36,14 @@ void FontCacheManager::prewarmCache(int fontId, const char* utf8Text, uint8_t st
 
   // Standard compressed font prewarm path: loop over all requested styles
   if (!fontDecompressor_ || fontMap_.count(fontId) == 0) return;
+
+  // Page slots persist across page turns; evict any slot that doesn't belong
+  // to this font's four styles so a font/size change can't leave stale slots
+  // occupying the fixed slot array.
+  const EpdFontFamily& family = fontMap_.at(fontId);
+  const EpdFontData* keep[4] = {family.getData(EpdFontFamily::REGULAR), family.getData(EpdFontFamily::BOLD),
+                                family.getData(EpdFontFamily::ITALIC), family.getData(EpdFontFamily::BOLD_ITALIC)};
+  fontDecompressor_->releaseSlotsNotIn(keep, 4);
 
   for (uint8_t i = 0; i < 4; i++) {
     if (!(styleMask & (1 << i))) continue;
@@ -84,7 +96,9 @@ void FontCacheManager::recordStyle(int fontId, EpdFontFamily::Style style) {
 
 FontCacheManager::PrewarmScope::PrewarmScope(FontCacheManager& manager) : manager_(&manager) {
   manager_->scanMode_ = ScanMode::Scanning;
-  manager_->clearCache();
+  // NOTE: no clearCache() here — page slots persist across page turns so
+  // consecutive pages reuse each other's decompressed glyphs (prewarmCache
+  // does a containment check / merge per style).
   manager_->resetStats();
   manager_->scanText_.clear();
   manager_->scanText_.reserve(2048);  // Pre-allocate to avoid heap fragmentation from repeated concat
@@ -113,7 +127,9 @@ void FontCacheManager::PrewarmScope::endScanAndPrewarm() {
 FontCacheManager::PrewarmScope::~PrewarmScope() {
   if (active_) {
     endScanAndPrewarm();  // no-op if already called (scanText_ is empty)
-    manager_->clearCache();
+    // Keep the page slots (cross-page reuse) but drop the transient hot
+    // group so its 4-64KB never pins heap between pages.
+    manager_->trimTransientCaches();
   }
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 #include <EpdFontFamily.h>
 #include <HalStorage.h>
+#include <Serialization.h>
 
 #include <memory>
 #include <string>
@@ -52,5 +53,5 @@ class TextBlock final : public Block {
   void render(const GfxRenderer& renderer, int fontId, int x, int y, uint8_t bionicReadingMode = 0) const;
   BlockType getType() override { return TEXT_BLOCK; }
   bool serialize(FsFile& file) const;
-  static std::unique_ptr<TextBlock> deserialize(FsFile& file);
+  static std::unique_ptr<TextBlock> deserialize(serialization::Reader& file);
 };

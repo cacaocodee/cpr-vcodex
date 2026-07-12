@@ -3,6 +3,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "Epub.h"
 
@@ -15,6 +16,27 @@ class Section {
   GfxRenderer& renderer;
   std::string filePath;
   FsFile file;
+
+  // RAM copies of the section file's lookup tables plus a persistent read
+  // handle: a page turn becomes one seek + one contiguous read instead of a
+  // re-open, header parse, and per-field reads. Empty vectors = fall back to
+  // the legacy streaming path.
+  struct ParaLutEntry {
+    uint32_t xhtmlByteOffset;
+    uint16_t paragraphIndex;
+    uint16_t listItemIndex;
+  };
+  std::vector<uint32_t> pageLut_;
+  std::vector<ParaLutEntry> paraLut_;
+  uint32_t lutOffset_ = 0;
+  uint32_t anchorMapOffset_ = 0;
+  uint32_t paragraphLutOffset_ = 0;
+  mutable FsFile readFile_;
+  mutable bool readFileOpen_ = false;
+
+  bool loadLutsFromFile();
+  bool ensureReadFile() const;
+  void closeReadFile() const;
 
   void writeSectionFileHeader(int fontId, float lineCompression, bool extraParagraphSpacing,
                               bool forceParagraphIndents, uint8_t paragraphAlignment, uint16_t viewportWidth,
@@ -34,7 +56,7 @@ class Section {
         spineIndex(spineIndex),
         renderer(renderer),
         filePath(epub->getCachePath() + "/sections/" + std::to_string(spineIndex) + ".bin") {}
-  ~Section() = default;
+  ~Section() { closeReadFile(); }
   bool loadSectionFile(int fontId, float lineCompression, bool extraParagraphSpacing, bool forceParagraphIndents,
                        uint8_t paragraphAlignment, uint16_t viewportWidth, uint16_t viewportHeight,
                        bool hyphenationEnabled, bool focusReadingEnabled, bool embeddedStyle, uint8_t imageRendering);
