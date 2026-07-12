@@ -246,6 +246,32 @@ unsigned long HalGPIO::getHeldTime() const { return inputMgr.getHeldTime(); }
 
 unsigned long HalGPIO::getPowerButtonHeldTime() const { return inputMgr.getPowerButtonHeldTime(); }
 
+HalGPIO::WakeHoldResult HalGPIO::pollWakeHold(const uint32_t holdMs, uint32_t* releasedAtMs) const {
+  if (releasedAtMs) {
+    *releasedAtMs = 0;
+  }
+  if (getWakeupReason() != WakeupReason::PowerButton) {
+    return WakeHoldResult::Released;
+  }
+  // Raw GPIO polling — the wake press is still in progress when setup()
+  // starts, long before InputManager is reliable.
+  pinMode(InputManager::POWER_BUTTON_PIN, INPUT_PULLUP);
+  uint8_t releasedSamples = 0;
+  while (millis() < holdMs) {
+    if (digitalRead(InputManager::POWER_BUTTON_PIN) == LOW) {
+      releasedSamples = 0;
+    } else if (++releasedSamples >= 6) {  // release debounced for ~30ms
+      if (releasedAtMs) {
+        const uint32_t now = millis();
+        *releasedAtMs = now > 30 ? now - 30 : 0;
+      }
+      return WakeHoldResult::Released;
+    }
+    delay(5);
+  }
+  return WakeHoldResult::HeldForCycle;  // still pressed at the threshold
+}
+
 void HalGPIO::startDeepSleep() {
   // Ensure that the power button has been released to avoid immediately turning back on if you're holding it
   while (inputMgr.isPressed(BTN_POWER)) {

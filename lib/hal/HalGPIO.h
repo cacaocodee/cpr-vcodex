@@ -81,6 +81,16 @@ class HalGPIO {
   // cycle); used by the BLE HID remote to emit physical-button events.
   void injectButtonPress(uint8_t buttonIndex);
 
+  enum class WakeHoldResult : uint8_t { Released, HeldForCycle };
+  // Call at the very top of setup() on a power-button wake: raw-polls the
+  // power GPIO while the wake press is still held. Returns HeldForCycle if
+  // the press lasts past holdMs since boot (the sleep-wallpaper-cycle
+  // gesture); otherwise returns Released with the release time (ms since
+  // boot, button assumed held since boot) in *releasedAtMs — used in place
+  // of verifyPowerButtonWakeup's own measurement. InputManager isn't
+  // reliable this early; a quick click costs no extra boot time.
+  WakeHoldResult pollWakeHold(uint32_t holdMs, uint32_t* releasedAtMs) const;
+
   // Setup wake up GPIO and enter deep sleep
   void startDeepSleep();
 

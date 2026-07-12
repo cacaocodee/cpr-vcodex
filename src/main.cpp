@@ -377,6 +377,15 @@ void setup() {
   silentRebootMagic = 0;
   silentRebootTarget = 0;
 
+  // Must run before any storage/settings init, while the wake press is
+  // still physically held: hold ~3s while sleeping = cycle to the next
+  // wallpaper; releasing earlier is a normal wake (release time recorded
+  // for the hold-to-wake check below, replacing verifyPowerButtonWakeup).
+  constexpr uint32_t HOLD_TO_CYCLE_MS = 2800;  // ~3s from the physical press incl. boot latency
+  uint32_t wakePressReleasedAtMs = 0;
+  const bool wakeToCycleWallpaper =
+      gpio.pollWakeHold(HOLD_TO_CYCLE_MS, &wakePressReleasedAtMs) == HalGPIO::WakeHoldResult::HeldForCycle;
+
   gpio.begin();
   powerManager.begin();
   halTiltSensor.begin();
@@ -484,34 +493,25 @@ void setup() {
 #endif
 
   const auto wakeupReason = gpio.getWakeupReason();
-  bool wakeToCycleWallpaper = false;
   switch (wakeupReason) {
-    case HalGPIO::WakeupReason::PowerButton:
-      LOG_DBG("MAIN", "Verifying power button press duration");
-      gpio.verifyPowerButtonWakeup(SETTINGS.getPowerButtonDuration(),
-                                   SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::SLEEP ||
-                                       SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::SLEEP_DBL_REFRESH);
-      // Double-click while sleeping cycles to the next wallpaper instead of
-      // waking: after the wake press, watch briefly for a stable release
-      // followed by a second press. A held (deliberate) wake never arms.
-      {
-        const unsigned long t0 = millis();
-        uint8_t releasedSamples = 0;
-        bool armed = false;
-        while (millis() - t0 < 600) {
-          gpio.update();
-          if (!gpio.isPressed(HalGPIO::BTN_POWER)) {
-            if (!armed && ++releasedSamples >= 5) {
-              armed = true;  // release debounced for ~50ms
-            }
-          } else if (armed) {
-            wakeToCycleWallpaper = true;
-            break;
-          }
-          delay(10);
-        }
+    case HalGPIO::WakeupReason::PowerButton: {
+      // The wake press was already measured by pollWakeHold at the top of
+      // setup() (raw GPIO, assumed held since boot — the same calibration
+      // verifyPowerButtonWakeup used). A ~3s hold means "cycle wallpaper";
+      // otherwise apply the hold-to-wake threshold for configs without
+      // short-press wake.
+      if (wakeToCycleWallpaper) {
+        break;
+      }
+      const bool shortPressWakes = SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::SLEEP ||
+                                   SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::SLEEP_DBL_REFRESH;
+      if (!shortPressWakes && wakePressReleasedAtMs < SETTINGS.getPowerButtonDuration()) {
+        LOG_DBG("MAIN", "Wake press too short (%lums < %ums) — back to sleep",
+                static_cast<unsigned long>(wakePressReleasedAtMs), SETTINGS.getPowerButtonDuration());
+        gpio.startDeepSleep();
       }
       break;
+    }
     case HalGPIO::WakeupReason::AfterUSBPower:
       // If USB power caused a cold boot, go back to sleep
       LOG_DBG("MAIN", "Wakeup reason: After USB Power");
