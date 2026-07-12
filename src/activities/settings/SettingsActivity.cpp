@@ -164,6 +164,7 @@ const std::vector<SettingInfo>& getDeviceSystemSettings() {
       SettingInfo::Enum(StrId::STR_TIME_TO_SLEEP, &CrossPointSettings::sleepTimeout,
                         {StrId::STR_MIN_1, StrId::STR_MIN_5, StrId::STR_MIN_10, StrId::STR_MIN_15, StrId::STR_MIN_30}),
       SettingInfo::Toggle(StrId::STR_SHOW_HIDDEN_FILES, &CrossPointSettings::showHiddenFiles),
+      SettingInfo::Toggle(StrId::STR_HOME_SHOW_SYSTEM_INFO, &CrossPointSettings::homeShowSystemInfo),
       SettingInfo::Action(StrId::STR_WIFI_NETWORKS, SettingAction::Network),
 #ifdef ENABLE_BLE
       SettingInfo::Action(StrId::STR_BLE_REMOTE, SettingAction::BluetoothRemote),

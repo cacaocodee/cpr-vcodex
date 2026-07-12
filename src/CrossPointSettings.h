@@ -293,6 +293,8 @@ class CrossPointSettings {
   uint8_t sideButtonLayout = PREV_NEXT;
   uint8_t frontButtonFollowOrientation = 0;
   uint8_t buttonHintsPosition = HINTS_BOTTOM;
+  // Show free RAM in the home top bar and reader status bar
+  uint8_t homeShowSystemInfo = 0;
 #ifdef ENABLE_BLE
   // Bluetooth HID remote settings
   uint8_t bleEnabled = 0;               // 1 = BT on (runtime only; cleared at boot — never auto-enables)

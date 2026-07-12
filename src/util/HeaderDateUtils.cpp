@@ -34,8 +34,19 @@ void drawHeaderTopLine(const GfxRenderer& renderer, const ThemeMetrics& metrics,
     renderer.drawText(SMALL_FONT_ID, dateX, metrics.topPadding + 5, dateText.c_str());
   }
 
+  int leftX = metrics.contentSidePadding;
+  if (SETTINGS.homeShowSystemInfo) {
+    const std::string sysInfo = HeaderDateUtils::getSystemInfoText(false);
+    const int maxSysWidth = std::max(0, dateX - leftX - 12);
+    if (maxSysWidth > 0) {
+      const std::string truncated = renderer.truncatedText(SMALL_FONT_ID, sysInfo.c_str(), maxSysWidth);
+      renderer.drawText(SMALL_FONT_ID, leftX, metrics.topPadding + 5, truncated.c_str());
+      leftX += renderer.getTextWidth(SMALL_FONT_ID, truncated.c_str()) + 12;
+    }
+  }
+
   if (!reminderText.empty()) {
-    const int reminderX = metrics.contentSidePadding;
+    const int reminderX = leftX;
     const int maxReminderWidth = std::max(0, dateX - reminderX - 12);
     if (maxReminderWidth > 0) {
       const std::string truncated = renderer.truncatedText(SMALL_FONT_ID, reminderText.c_str(), maxReminderWidth);
@@ -86,6 +97,13 @@ std::string HeaderDateUtils::getDisplayDateText() {
     }
   }
   return text;
+}
+
+std::string HeaderDateUtils::getSystemInfoText(const bool compact) {
+  char buf[24];
+  const unsigned long freeKb = ESP.getFreeHeap() / 1024;
+  snprintf(buf, sizeof(buf), "%s%luK", compact ? "" : "RAM ", freeKb);
+  return buf;
 }
 
 std::string HeaderDateUtils::getSyncDayReminderText() {

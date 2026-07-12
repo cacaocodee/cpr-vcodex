@@ -383,6 +383,7 @@ bool loadSettingsDirect(CrossPointSettings& s, const JsonDocument& doc, bool* ne
   loadToggle("frontButtonFollowOrientation", s.frontButtonFollowOrientation);
   loadToggle("uiFollowOrientation", s.uiFollowOrientation);
   loadEnum("buttonHintsPosition", s.buttonHintsPosition, CrossPointSettings::BUTTON_HINTS_POSITION_COUNT);
+  loadToggle("homeShowSystemInfo", s.homeShowSystemInfo);
 #ifdef ENABLE_BLE
   loadToggle("bleEnabled", s.bleEnabled);
   {
@@ -791,6 +792,7 @@ bool JsonSettingsIO::saveSettings(const CrossPointSettings& s, const char* path)
   doc["frontButtonFollowOrientation"] = s.frontButtonFollowOrientation;
   doc["uiFollowOrientation"] = s.uiFollowOrientation;
   doc["buttonHintsPosition"] = s.buttonHintsPosition;
+  doc["homeShowSystemInfo"] = s.homeShowSystemInfo;
 #ifdef ENABLE_BLE
   doc["bleEnabled"] = s.bleEnabled;
   doc["bleBondedDeviceAddr"] = s.bleBondedDeviceAddr;

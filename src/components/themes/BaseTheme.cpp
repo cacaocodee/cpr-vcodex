@@ -16,6 +16,7 @@
 #include "RecentBooksStore.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
+#include "util/HeaderDateUtils.h"
 
 // Internal constants
 namespace {
@@ -931,6 +932,18 @@ void BaseTheme::drawStatusBar(GfxRenderer& renderer, const float bookProgress, c
     }
   }
 
+  // Draw free RAM (same toggle as the home top bar), compact form,
+  // left side after the battery/clock block.
+  int sysInfoReserve = 0;
+  if (SETTINGS.homeShowSystemInfo) {
+    const std::string sysText = HeaderDateUtils::getSystemInfoText(true);
+    const int sysWidth = renderer.getTextWidth(SMALL_FONT_ID, sysText.c_str());
+    const int sysX = metrics.statusBarHorizontalMargin + orientedMarginLeft + batterySize +
+                     (clockOnLeft ? clockTextWidth + 10 : 0) + (batterySize > 0 || clockOnLeft ? 10 : 1);
+    renderer.drawText(SMALL_FONT_ID, sysX, textY, sysText.c_str());
+    sysInfoReserve = sysWidth + 10;
+  }
+
   // Draw Title
   if (!title.empty()) {
     textY -= textYOffset;
@@ -940,7 +953,7 @@ void BaseTheme::drawStatusBar(GfxRenderer& renderer, const float bookProgress, c
         renderer.getScreenWidth() - (metrics.statusBarHorizontalMargin * 2) - orientedMarginLeft - orientedMarginRight;
 
     const int clockReserve = clockTextWidth > 0 ? (clockTextWidth + 10) : 0;
-    const int titleMarginLeft = batterySize + (clockOnLeft ? clockReserve : 0) + 30;
+    const int titleMarginLeft = batterySize + (clockOnLeft ? clockReserve : 0) + sysInfoReserve + 30;
     const int titleMarginRight = progressTextWidth + (clockOnLeft ? 0 : clockReserve) + 30;
 
     // Attempt to center title on the screen, but if title is too wide then later we will center it within the
