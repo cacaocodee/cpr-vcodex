@@ -107,8 +107,8 @@ std::string HeaderDateUtils::getSystemInfoText(const bool compact) {
 }
 
 std::string HeaderDateUtils::getSyncDayReminderText() {
-  const uint8_t threshold = SETTINGS.getSyncDayReminderStartThreshold();
-  return APP_STATE.shouldShowSyncDayReminder(threshold) ? std::string(tr(STR_SYNC_DAY_REMINDER_MESSAGE)) : "";
+  // Sync-day reminder disabled — it was intrusive in the home header.
+  return "";
 }
 
 void HeaderDateUtils::drawTopLine(GfxRenderer& renderer, const std::string& dateText) {
